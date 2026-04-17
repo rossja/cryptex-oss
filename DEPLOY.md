@@ -28,36 +28,38 @@ Create an `A` record for the domain you want (e.g. `cryptex.your-domain.com`) po
 
 ### 1.3. Add Cryptex as a Dokploy application
 
-1. In the Dokploy dashboard, click **Create Application**.
-2. **Source**: GitHub → connect your GitHub account → pick the forked Cryptex repo, branch `main` (or `master`).
-3. **Build Type**: Docker Compose. Dokploy auto-detects `docker-compose.yaml` at the repo root.
-4. **Domain**: add `cryptex.your-domain.com`, tick **HTTPS** and **Certificate Provider: Let's Encrypt**.
-5. **Port**: `80` (the internal container port; Dokploy handles external 80/443 via Traefik).
+1. Dokploy dashboard → **Create Application**.
+2. **Source**: GitHub → pick your Cryptex fork, branch `master`.
+3. **Build Type**: Docker Compose (auto-detected from `docker-compose.yml`).
+4. **DO NOT add an entry in the Domains tab.** The compose file handles all
+   Traefik routing + Let's Encrypt via labels — adding a Domain entry in the
+   UI causes label collisions and silently breaks cert issuance. You set the
+   domain via the `DOMAIN` env var below.
 
-### 1.4. Set build variables
+### 1.4. Set environment variables
 
-Under the application's **Environment** tab, add:
+Under the application's **Environment** tab:
 
 | Variable | Value | Purpose |
 |---|---|---|
+| **`DOMAIN`** | `cryptex.your-domain.com` | **Required for HTTPS.** Traefik routes this host + Let's Encrypt issues a cert for it. |
 | `BASE_PATH` | *(leave empty)* | Set to `/cryptex` if serving at a subpath. |
 | `PUBLIC_ADSENSE_CLIENT` | `ca-pub-XXXXXXXXXXXXXXXX` | Optional. Omit to disable ads entirely. |
-| `TZ` | `UTC` or e.g. `Asia/Kolkata` | Container log timezone. |
-| `CRYPTEX_PORT` | *(not needed)* | Only for standalone docker-compose. |
+| `TZ` | `UTC` or `Asia/Kolkata`, etc. | Container log timezone. |
 
-> AdSense is a **build-time** variable — Vite inlines it into the static bundle. Changing it requires a rebuild (Dokploy: click **Rebuild**).
+> **`DOMAIN` + `PUBLIC_ADSENSE_CLIENT` are build-time** — Vite inlines them into the static bundle. Changing either requires a full **Rebuild** in Dokploy, not just restart.
 
-### 1.5. Enable Traefik labels
+### 1.5. First deploy
 
-Open `docker-compose.yaml` and uncomment the **`traefik.*`** label block. Replace `cryptex.your-domain.com` with your actual domain. Commit and push — Dokploy auto-deploys via its GitHub webhook.
+Hit **Deploy**. First build takes ~2-3 minutes. The webhook Dokploy registers in your GitHub repo auto-deploys on subsequent pushes.
 
-Alternatively: Dokploy's **Domains** tab can set these labels for you through the UI. Either path works.
+During deploy Traefik:
+1. Picks up the Host rule from the compose labels.
+2. Opens port 80 to serve the Let's Encrypt HTTP-01 challenge.
+3. Issues a cert (takes ~15-45 seconds after first successful deploy).
+4. Redirects all HTTP → HTTPS permanently.
 
-### 1.6. First deploy
-
-Hit **Deploy**. Watch the build log — first build takes ~2-3 minutes (node_modules install + SvelteKit build). Subsequent pushes auto-deploy via the webhook Dokploy registers in your GitHub repo.
-
-When the build succeeds, `https://cryptex.your-domain.com` will be live with a valid Let's Encrypt cert.
+When done, `https://cryptex.your-domain.com` serves with a valid Let's Encrypt cert.
 
 ### 1.7. Verify
 
@@ -165,10 +167,47 @@ On Dokploy: click **Pull new image + Redeploy** after each push to `main`.
 
 ## Troubleshooting
 
+### "Connection is not secure" / self-signed cert / wrong cert served
+
+This is almost always one of three things. In order of likelihood:
+
+**1. `DOMAIN` env var isn't set or doesn't match the hostname you're visiting.**
+
+Dokploy → Environment tab → confirm `DOMAIN=cryptex.your-domain.com` (exactly matching the URL you hit in the browser). After changing, click **Rebuild** (not just Restart) because `DOMAIN` is used in Traefik labels that are evaluated at deploy time.
+
+**2. You ALSO added a Domain entry in Dokploy's Domains UI tab.**
+
+This is the silent killer. Dokploy's UI domain config injects its own Traefik router labels, which collide with the labels already in `docker-compose.yml`. The cert resolver attaches to one router, traffic goes through the other, you get the Traefik default self-signed cert. **Delete the Domain entry from the UI**; keep only the `DOMAIN` env var.
+
+**3. DNS hasn't propagated yet → Let's Encrypt HTTP-01 challenge failed → Traefik serves its default self-signed cert as fallback.**
+
+```bash
+# On any machine:
+dig +short cryptex.your-domain.com
+# must return your VPS public IP
+
+# On the VPS:
+docker logs dokploy-traefik 2>&1 | grep -Ei "acme|certificate|cryptex" | tail -30
+# Look for "unable to generate a certificate" or "ACME challenge failed"
+```
+
+Fix: wait for DNS, then force cert re-issuance by restarting Traefik:
+```bash
+docker restart dokploy-traefik
+```
+
+**Verify it's actually fixed:**
+```bash
+curl -vI https://cryptex.your-domain.com/health 2>&1 | grep -E "(issuer|subject)"
+# issuer:  C=US, O=Let's Encrypt, CN=R3        ← this is what you want
+# subject: CN=cryptex.your-domain.com
+```
+If you see `issuer: CN=TRAEFIK DEFAULT CERT` instead, cert issuance failed — go back to step 1.
+
 ### Health check failing
 
 ```bash
-docker exec cryptex wget -qO- http://localhost/health
+docker exec $(docker ps -qf name=cryptex) wget -qO- http://127.0.0.1/health
 # Should return: ok
 ```
 
