@@ -84,34 +84,47 @@ If you set `PUBLIC_ADSENSE_CLIENT`:
 
 ## 2. Plain Docker
 
-For any Linux host with Docker + docker-compose:
+The committed `docker-compose.yml` is **Dokploy-first** — it joins the external `dokploy-network` so Traefik can route to it. For a standalone Docker host (no Dokploy), use plain `docker build` + `docker run`:
 
 ```bash
 git clone https://github.com/m4xx101/cryptex.git
 cd cryptex
-cp .env.example .env
-# Edit .env — set PUBLIC_ADSENSE_CLIENT only if you actually want ads.
-docker compose up -d --build
+
+# Build (pass build args inline — these bake into the static bundle)
+docker build \
+  --build-arg BASE_PATH="" \
+  --build-arg PUBLIC_ADSENSE_CLIENT="" \
+  -t cryptex:latest .
+
+# Run
+docker run -d \
+  --name cryptex \
+  --restart unless-stopped \
+  -p 8080:80 \
+  -e TZ=UTC \
+  cryptex:latest
 ```
 
-Cryptex serves on `http://localhost:${CRYPTEX_PORT:-8080}`. Put a reverse proxy (nginx, Caddy, Traefik) in front for TLS.
+Cryptex serves on `http://localhost:8080`. Put a reverse proxy (nginx, Caddy, Traefik) in front for TLS.
 
 ### Rebuild after env change
 
 ```bash
-docker compose up -d --build
+docker stop cryptex && docker rm cryptex
+docker build --build-arg PUBLIC_ADSENSE_CLIENT="ca-pub-…" -t cryptex:latest .
+docker run -d --name cryptex --restart unless-stopped -p 8080:80 cryptex:latest
 ```
 
 ### View logs
 
 ```bash
-docker compose logs -f cryptex
+docker logs -f cryptex
 ```
 
 ### Stop
 
 ```bash
-docker compose down
+docker stop cryptex && docker rm cryptex
 ```
 
 ---

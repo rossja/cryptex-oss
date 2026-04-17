@@ -150,15 +150,17 @@ curl -sSL https://dokploy.com/install.sh | sh
 # 5. Deploy. Done.
 ```
 
-**Plain Docker on any host:**
+**Plain Docker on any host (no Dokploy):**
 
 ```bash
 git clone https://github.com/m4xx101/cryptex.git
 cd cryptex
-cp .env.example .env        # optional — only edit for ads / subpath
-docker compose up -d --build
+docker build -t cryptex:latest .
+docker run -d --name cryptex --restart unless-stopped -p 8080:80 cryptex:latest
 # → http://localhost:8080
 ```
+> Note: `docker-compose.yml` is Dokploy-native (joins `dokploy-network`).
+> For standalone, use plain `docker build` + `docker run` above. See `DEPLOY.md`.
 
 **GitHub Pages:**
 

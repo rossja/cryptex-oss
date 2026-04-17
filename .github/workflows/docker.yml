@@ -6,7 +6,7 @@ on:
     paths:
       - 'Dockerfile'
       - 'nginx.conf'
-      - 'docker-compose.yaml'
+      - 'docker-compose.yml'
       - '.dockerignore'
       - 'app/**'
       - 'src/transformers/**'
