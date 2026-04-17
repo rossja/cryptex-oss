@@ -85,23 +85,32 @@ services:
       - "traefik.enable=true"
       - "traefik.docker.network=dokploy-network"
 
+      # -------- The service that actually carries traffic --------
+      # Named explicitly so our routers can pin to it with `.service=cryptex-app`.
+      # Dokploy's compose engine auto-generates additional services from
+      # `expose:` directives (e.g. `<project>-cryptex-<rev>-web`). Without an
+      # explicit router→service binding, Traefik sees multiple candidate
+      # services on the same container and refuses to route ("cannot be
+      # linked automatically with multiple Services").
+      - "traefik.http.services.cryptex-app.loadbalancer.server.port=80"
+
       # -------- HTTPS router + Let's Encrypt TLS --------
-      # `cryptex-secure` must be a unique router name across all Dokploy apps
-      # on this host. If you deploy multiple copies, edit the name per app.
-      - "traefik.http.routers.cryptex-secure.rule=Host(`${DOMAIN:-cryptex.localhost}`)"
-      - "traefik.http.routers.cryptex-secure.entrypoints=websecure"
-      - "traefik.http.routers.cryptex-secure.tls=true"
-      - "traefik.http.routers.cryptex-secure.tls.certresolver=letsencrypt"
-      - "traefik.http.services.cryptex.loadbalancer.server.port=80"
+      # The explicit `.service=cryptex-app` binding is THE critical fix —
+      # it disambiguates from Dokploy's auto-generated services.
+      - "traefik.http.routers.cryptex-app-secure.rule=Host(`${DOMAIN:-cryptex.localhost}`)"
+      - "traefik.http.routers.cryptex-app-secure.entrypoints=websecure"
+      - "traefik.http.routers.cryptex-app-secure.tls=true"
+      - "traefik.http.routers.cryptex-app-secure.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.cryptex-app-secure.service=cryptex-app"
 
       # -------- HTTP → HTTPS redirect --------
-      # Matches the same Host() so requests on :80 get redirected to :443.
-      # The middleware is defined globally; it's reused across redirects.
-      - "traefik.http.routers.cryptex-http.rule=Host(`${DOMAIN:-cryptex.localhost}`)"
-      - "traefik.http.routers.cryptex-http.entrypoints=web"
-      - "traefik.http.routers.cryptex-http.middlewares=cryptex-https-redirect"
-      - "traefik.http.middlewares.cryptex-https-redirect.redirectscheme.scheme=https"
-      - "traefik.http.middlewares.cryptex-https-redirect.redirectscheme.permanent=true"
+      # Same service pin, but traffic gets redirected before reaching it.
+      - "traefik.http.routers.cryptex-app-http.rule=Host(`${DOMAIN:-cryptex.localhost}`)"
+      - "traefik.http.routers.cryptex-app-http.entrypoints=web"
+      - "traefik.http.routers.cryptex-app-http.service=cryptex-app"
+      - "traefik.http.routers.cryptex-app-http.middlewares=cryptex-app-https-redirect"
+      - "traefik.http.middlewares.cryptex-app-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.cryptex-app-https-redirect.redirectscheme.permanent=true"
 
       # -------- OCI metadata --------
       - "org.opencontainers.image.title=Cryptex"
