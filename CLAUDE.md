@@ -78,8 +78,31 @@ Vue 2's `v-html` **does not compile** templates. This means:
 - `getTabContentHTML()` is only safe for fully static HTML with inline handlers. See `docs/TOOL_ARCHITECTURE.md` for the rule in full.
 - When adding a new Vue-driven tab, create `templates/<tabid>.html` **and** list it in `build/inject-tool-templates.js`.
 
+### Multi-provider BYOK gateway
+
+All AI calls now route through `app/src/lib/ai/gateway.ts`. It exposes:
+- `chat(req) → ChatResponse` — unchanged shape for the three existing tools
+- `streamChat(req)` — reserved for the future chat playground
+- `fetchModels(signal)` — aggregates catalogs across every enabled provider
+- `validateKey(providerId, candidate, opts)` — per-provider key probe
+- `resolve(modelId)` — routes qualified ids (`openrouter:…`, `anthropic:…`,
+  `openai-compat:<instance>/…`) to the right adapter; unqualified ids default
+  to OpenRouter for back-compat with stored prefs.
+
+Provider config lives in `app/src/lib/ai/providers.svelte.ts` persisted under
+`cryptex.providers`. Adapters in `app/src/lib/ai/adapters/` are lazy-imported.
+The old `openrouter.ts` is gone — don't recreate it.
+
+Supported providers as of 2026-04-18:
+- **OpenRouter** (default, CORS-open)
+- **Anthropic** direct (uses `anthropic-dangerous-direct-browser-access` header)
+- **OpenAI-compatible** endpoints (Groq, Together, Fireworks, DeepInfra, Cerebras, SambaNova, custom)
+- Direct OpenAI / Google Gemini are **not supported** from the browser —
+  their APIs don't return CORS headers. Users route those models through
+  OpenRouter.
+
 ### OpenRouter-backed features
-AI Translation (on the Transform tab), PromptCraft, Anti-Classifier, and the Decoder's optional "translate to English" all call OpenRouter directly from the browser using a key the user pastes into Advanced Settings. The key is stored in `localStorage` only. `js/data/openrouterModels.js` is the model catalog.
+AI Translation (on the Transform tab), PromptCraft, Anti-Classifier, and the Decoder's optional "translate to English" all now go through the multi-provider gateway (defaulting to OpenRouter) using a key the user pastes into Advanced Settings. The key is stored in `localStorage` only. The legacy `js/data/openrouterModels.js` catalog is superseded by `app/src/lib/ai/catalog.svelte.ts`.
 
 ### Two-layer access to transforms (web vs CLI)
 - **Web**: Vue app loads `dist/js/bundles/transforms-bundle.js` → `window.transforms`.

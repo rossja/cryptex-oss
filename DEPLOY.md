@@ -26,6 +26,15 @@ The installer sets up Docker + Traefik + the Dokploy dashboard. After it finishe
 
 Create an `A` record for the domain you want (e.g. `cryptex.your-domain.com`) pointing at the VPS public IP. Give DNS ~2 minutes to propagate.
 
+**If your DNS is on Cloudflare:** leave the proxy **off** (grey cloud / DNS-only) for the first deploy. Let's Encrypt uses an HTTP-01 challenge that needs to reach *your* VPS, not Cloudflare's edge. Orange-cloud proxying intercepts the challenge and silently breaks cert issuance. Once the cert is issued, you can re-enable the proxy (see Cloudflare section below).
+
+Verify DNS points at your VPS, not Cloudflare:
+```bash
+dig +short cryptex.your-domain.com
+# Must return YOUR VPS IP.
+# If you see 104.x.x.x or 172.67.x.x it's still Cloudflare-proxied.
+```
+
 ### 1.3. Add Cryptex as a Dokploy application
 
 1. Dokploy dashboard → **Create Application**.
@@ -240,3 +249,33 @@ Check repo **Settings → Pages** — Source must be **GitHub Actions**, not a b
 | `CRYPTEX_PORT` | Runtime | `8080` | Host-side port (standalone only). |
 
 All other app state is client-side: OpenRouter key lives in `localStorage` on the visitor's machine, never on the server.
+
+---
+
+## Content Security Policy
+
+Cryptex ships CSP as a response header via Traefik. Minimum `connect-src` for
+the multi-provider gateway (Commit 7 of 2026-04-18 rollout):
+
+```
+default-src 'self';
+script-src 'self' 'wasm-unsafe-eval';
+style-src 'self' 'unsafe-inline';
+connect-src 'self'
+  https://openrouter.ai
+  https://api.anthropic.com
+  https://api.groq.com
+  https://api.together.xyz
+  https://api.fireworks.ai
+  https://api.deepinfra.com
+  https://api.cerebras.ai
+  https://api.sambanova.ai;
+img-src 'self' data: blob:;
+frame-ancestors 'none';
+base-uri 'self';
+form-action 'self';
+```
+
+Add the header via a Traefik middleware on the Cryptex router. See
+`docs/CUSTOM-ENDPOINTS.md` for how users with custom OpenAI-compatible
+endpoints should extend `connect-src`.
