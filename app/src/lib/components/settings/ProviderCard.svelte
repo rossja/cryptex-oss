@@ -4,6 +4,7 @@
   import { scheduleValidate, verifyNow, subscribeValidation } from '$lib/ai/validate';
   import { validateKey as gatewayValidate } from '$lib/ai/gateway';
   import { getPreset } from '$lib/ai/presets';
+  import { catalog } from '$lib/ai/catalog.svelte';
   import ErrorBanner from '$lib/components/ai/ErrorBanner.svelte';
   import { GatewayError } from '$lib/ai/types';
   import Eye from 'lucide-svelte/icons/eye';
@@ -13,6 +14,7 @@
   import CircleX from 'lucide-svelte/icons/circle-x';
   import Loader from 'lucide-svelte/icons/loader-circle';
   import ExternalLink from 'lucide-svelte/icons/external-link';
+  import RefreshCw from 'lucide-svelte/icons/refresh-cw';
 
   type Props = { record: ProviderRecord; onRemove?: () => void };
   let { record, onRemove }: Props = $props();
@@ -27,6 +29,19 @@
 
   const instanceId = $derived(record.id === 'openai-compat' ? (record as { instanceId: string }).instanceId : undefined);
   const preset = $derived(record.id === 'openai-compat' ? getPreset((record as { presetId: string }).presetId) : undefined);
+
+  const modelCount = $derived(
+    catalog.list.filter((m) =>
+      m.provider === record.id &&
+      (record.id !== 'openai-compat' || m.providerInstanceId === (record as { instanceId?: string }).instanceId)
+    ).length
+  );
+
+  let refreshing = $state(false);
+  async function refreshModels() {
+    refreshing = true;
+    try { await catalog.refresh(true); } finally { refreshing = false; }
+  }
 
   // Subscribe to validation outcomes for this provider instance.
   $effect(() => {
@@ -107,14 +122,32 @@
     </div>
   </label>
 
-  <div class="flex items-center gap-2 text-xs text-muted-foreground">
-    {#if validating}
-      <Loader class="h-3 w-3 animate-spin" /> Validating…
-    {:else if lastError}
-      <CircleX class="h-3 w-3 text-red-400" /> {lastError.category}
-    {:else if verifiedAt}
-      <CircleCheck class="h-3 w-3 text-emerald-400" /> Verified
-    {/if}
+  <div class="flex items-center justify-between gap-2">
+    <div class="flex items-center gap-2 text-xs text-muted-foreground">
+      {#if validating}
+        <Loader class="h-3 w-3 animate-spin" /> Validating…
+      {:else if lastError}
+        <CircleX class="h-3 w-3 text-red-400" /> {lastError.category}
+      {:else if verifiedAt}
+        <CircleCheck class="h-3 w-3 text-emerald-400" /> Verified
+      {/if}
+    </div>
+    <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
+      {#if catalog.status === 'loading' || refreshing}
+        <Loader class="h-3 w-3 animate-spin" />
+      {/if}
+      <span>{modelCount} models</span>
+      <button
+        type="button"
+        onclick={refreshModels}
+        disabled={refreshing || catalog.status === 'loading'}
+        title="Refresh model catalog"
+        class="rounded p-0.5 hover:bg-white/10 disabled:opacity-40"
+        aria-label="Refresh models"
+      >
+        <RefreshCw class="h-3 w-3" />
+      </button>
+    </div>
   </div>
 
   {#if lastError}

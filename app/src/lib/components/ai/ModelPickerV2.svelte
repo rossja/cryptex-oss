@@ -78,7 +78,7 @@
 </script>
 
 <button type="button" onclick={() => open = !open}
-  class="rounded-md border border-white/10 bg-black/30 px-3 py-1.5 text-sm">
+  class="rounded-md border border-white/10 bg-black/30 px-3 py-1.5 text-sm hover:bg-black/40 hover:border-white/20 transition-colors">
   {selectedLabel}
 </button>
 
@@ -88,32 +88,49 @@
     aria-modal="true"
     aria-label="Select model"
     tabindex="-1"
-    class="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4"
+    class="fixed inset-0 z-50 grid place-items-center bg-background/80 backdrop-blur-sm p-4"
     onclick={() => open = false}
     onkeydown={(e) => { if (e.key === 'Escape') open = false; }}
   >
     <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-    <div class="glass flex w-full max-w-xl flex-col rounded-xl border border-white/10 p-4" onclick={(e) => e.stopPropagation()}>
-      <div class="flex items-center gap-2 border-b border-white/10 pb-2">
-        <Search class="h-4 w-4 text-muted-foreground" />
-        <input type="text" bind:value={query} onkeydown={onKeydown} placeholder="Search models…" class="flex-1 bg-transparent text-sm outline-none" autofocus />
-        <span class="text-xs text-muted-foreground">⌘M</span>
+    <div class="glass flex w-full max-w-2xl flex-col rounded-xl border border-white/10 shadow-glass" onclick={(e) => e.stopPropagation()}>
+      <!-- Search bar -->
+      <div class="flex items-center gap-2 border-b border-white/10 px-4 py-3">
+        <Search class="h-4 w-4 shrink-0 text-muted-foreground" />
+        <input
+          type="text"
+          bind:value={query}
+          onkeydown={onKeydown}
+          placeholder="Search models…"
+          class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+          autofocus
+        />
+        <kbd class="rounded border border-white/15 bg-black/30 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">⌘M</kbd>
       </div>
 
-      <div class="flex flex-wrap gap-1 border-b border-white/10 py-2">
+      <!-- Filter chips -->
+      <div class="flex flex-wrap gap-1.5 border-b border-white/10 px-4 py-2.5">
         {#each [['reasoning', '🧠 Reasoning'], ['vision', '👁 Vision'], ['tools', '🛠 Tools'], ['jsonSchema', '{ } JSON'], ['pdf', '📄 PDF'], ['free', '🆓 Free']] as const as [k, label]}
-          <button type="button" onclick={() => toggleFilter(k as never)}
+          <button
+            type="button"
+            onclick={() => toggleFilter(k as never)}
             aria-pressed={filters.has(k as never)}
-            class="rounded-full border border-white/10 px-2 py-0.5 text-xs {filters.has(k as never) ? 'bg-primary/20 border-primary/50' : 'hover:bg-white/5'}">
+            class="rounded-full border px-2.5 py-1 text-xs transition-colors {filters.has(k as never)
+              ? 'bg-primary/20 border-primary/40 text-primary'
+              : 'border-white/10 text-muted-foreground hover:bg-white/5'}"
+          >
             {label}
           </button>
         {/each}
       </div>
 
+      <!-- Model list -->
       <div class="max-h-[60vh] flex-1 overflow-y-auto">
         {#if recentModels.length > 0 && !query && filters.size === 0}
-          <div class="p-2">
-            <div class="px-2 py-1 text-xs uppercase tracking-wide text-muted-foreground">Recent</div>
+          <div class="px-2 pt-3 pb-1">
+            <div class="mb-1 border-b border-white/5 pb-1 px-2">
+              <span class="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Recent</span>
+            </div>
             {#each recentModels as m (m.qualifiedId)}
               <ModelRow model={m} active={m.qualifiedId === value} onSelect={choose} />
             {/each}
@@ -121,8 +138,10 @@
         {/if}
 
         {#each Object.entries(grouped) as [upstream, list]}
-          <div class="p-2">
-            <div class="px-2 py-1 text-xs uppercase tracking-wide text-muted-foreground">{upstream} ({list.length})</div>
+          <div class="px-2 pt-3 pb-1">
+            <div class="mb-1 px-2">
+              <span class="font-serif text-xs font-semibold tracking-wide text-muted-foreground">{upstream} <span class="font-sans font-normal opacity-60">({list.length})</span></span>
+            </div>
             {#each list as m (m.qualifiedId)}
               <ModelRow model={m} active={m.qualifiedId === value} onSelect={choose} />
             {/each}
@@ -130,8 +149,13 @@
         {/each}
 
         {#if filtered.length === 0}
-          <div class="p-6 text-center text-sm text-muted-foreground">
-            {#if query.trim()}Press <kbd>Enter</kbd> to use <code class="font-mono text-xs">{query.trim()}</code> anyway{:else}No models match the filters.{/if}
+          <div class="flex flex-col items-center gap-2 p-8 text-center text-sm text-muted-foreground">
+            {#if query.trim()}
+              <p>No models match <span class="font-mono text-xs text-foreground/80">"{query.trim()}"</span>.</p>
+              <p class="text-xs">Press <kbd class="rounded border border-white/15 bg-black/30 px-1.5 py-0.5 text-[10px]">Enter</kbd> to use <span class="font-mono text-xs text-foreground/80">"{query.trim()}"</span> as a custom model id.</p>
+            {:else}
+              No models match the filters.
+            {/if}
           </div>
         {/if}
       </div>

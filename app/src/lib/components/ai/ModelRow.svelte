@@ -14,12 +14,12 @@
 
 <button type="button"
   onclick={() => onSelect(model)}
-  class="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-left text-sm hover:bg-white/5 {active ? 'bg-white/10' : ''}">
+  class="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2.5 text-left text-sm transition-colors hover:bg-white/5 active:bg-white/10 {active ? 'bg-white/10' : ''}">
   <div class="min-w-0 flex-1">
     <div class="truncate font-medium">{model.name}</div>
-    <div class="truncate text-xs text-muted-foreground">{model.id} · {adapterLabel}</div>
+    <div class="truncate text-xs text-muted-foreground opacity-80">{model.id} · {adapterLabel}</div>
   </div>
-  <div class="flex flex-none items-center gap-1 text-muted-foreground">
+  <div class="flex flex-none items-center gap-1 {active ? 'text-primary' : 'text-muted-foreground'}">
     {#if model.capabilities?.reasoning}<CapabilityIcon kind="reasoning" />{/if}
     {#if model.capabilities?.vision}<CapabilityIcon kind="vision" />{/if}
     {#if model.capabilities?.tools}<CapabilityIcon kind="tools" />{/if}

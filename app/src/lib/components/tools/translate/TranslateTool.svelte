@@ -1,6 +1,7 @@
 <script lang="ts">
   import { MAIN_LANGS, EXOTIC_LANGS, getLangCode, flagEmoji, buildTranslatePrompt, type Lang } from './langs';
-  import { chat, hasApiKey, OpenRouterError, type ChatMessage } from '$lib/ai/openrouter';
+  import { chat, hasAnyKey as hasApiKey } from '$lib/ai/gateway';
+  import { GatewayError as OpenRouterError, type ChatMessage } from '$lib/ai/types';
   import ModelPickerV2 from '$lib/components/ai/ModelPickerV2.svelte';
   import { createPersistedState } from '$lib/stores/_persisted.svelte';
   import { goto } from '$app/navigation';
@@ -104,14 +105,6 @@
           return await translateTo(langName);
         }
         lastError = err;
-      } else if (err instanceof OpenRouterError && err.category === 'not_found' && isTranslateGemma(modelPref.value)) {
-        // Legacy shim path
-        errorMsg = 'TranslateGemma not yet on OpenRouter — retrying with Gemma 3 27B.';
-        notify.warn(errorMsg);
-        modelPref.value = 'openrouter:google/gemma-3-27b-it';
-        loading = false;
-        activeLang = '';
-        return await translateTo(langName);
       } else {
         errorMsg = err instanceof Error ? err.message : 'Translation failed';
         notify.error(errorMsg);

@@ -8,7 +8,7 @@
   import ConsentBanner from '$lib/ads/ConsentBanner.svelte';
   import { apply as applyTheme, watchSystemTheme } from '$lib/stores/theme.svelte';
   import { runLegacyMigration } from '$lib/stores/_migrate';
-  import { initModelsStore } from '$lib/ai/models.svelte';
+  import { initCatalogStore } from '$lib/ai/catalog.svelte';
   import { ensureAdSenseState } from '$lib/ads/adsense.svelte';
 
   let { children } = $props();
@@ -17,7 +17,7 @@
   onMount(() => {
     runLegacyMigration();
     applyTheme();
-    initModelsStore();
+    initCatalogStore();
     ensureAdSenseState();
     return watchSystemTheme();
   });

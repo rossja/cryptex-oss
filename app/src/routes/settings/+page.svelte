@@ -1,7 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { afterNavigate } from '$app/navigation';
-  import { models } from '$lib/ai/models.svelte';
   import { theme, apply as applyTheme } from '$lib/stores/theme.svelte';
   import { favorites } from '$lib/stores/favorites.svelte';
   import { lastUsed } from '$lib/stores/lastUsed.svelte';
@@ -10,7 +9,6 @@
   import Sun from 'lucide-svelte/icons/sun';
   import Moon from 'lucide-svelte/icons/moon';
   import Monitor from 'lucide-svelte/icons/monitor';
-  import Loader from 'lucide-svelte/icons/loader-circle';
   import Shield from 'lucide-svelte/icons/shield';
   import { consent, isAdSenseConfigured } from '$lib/stores/consent.svelte';
   import { ensureAdSenseState } from '$lib/ads/adsense.svelte';
@@ -88,36 +86,6 @@
 
   <!-- AI Providers -->
   <ProvidersPanel />
-
-  <!-- OpenRouter model catalog -->
-  <div class="space-y-2 rounded-xl border border-border bg-card/60 p-5 shadow-glass">
-    <div class="flex items-center justify-between">
-      <h2 class="font-serif text-lg">OpenRouter model catalog</h2>
-      <button
-        type="button"
-        onclick={() => models.refresh(true)}
-        disabled={models.status === 'loading'}
-        class="inline-flex items-center gap-1.5 rounded-md border border-border bg-card/40 px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40"
-      >
-        {#if models.status === 'loading'}
-          <Loader size={12} class="animate-spin" /> Refreshing
-        {:else}
-          Refresh
-        {/if}
-      </button>
-    </div>
-    <div class="text-sm text-muted-foreground">
-      {#if models.isLive}
-        <strong class="text-foreground">{models.list.length}</strong> models loaded live from OpenRouter.
-      {:else if models.status === 'error'}
-        <span class="text-destructive">Catalog fetch failed:</span> {models.error}. Using <strong class="text-foreground">{models.list.length}</strong> fallback entries.
-      {:else if models.status === 'loading'}
-        Loading…
-      {:else}
-        Showing <strong class="text-foreground">{models.list.length}</strong> fallback entries. Save a key above to fetch the full live catalog.
-      {/if}
-    </div>
-  </div>
 
   <!-- Theme -->
   <div class="space-y-3 rounded-xl border border-border bg-card/60 p-5 shadow-glass">

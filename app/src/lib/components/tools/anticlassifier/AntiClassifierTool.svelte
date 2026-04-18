@@ -1,6 +1,7 @@
 <script lang="ts">
   import { ANTICLASSIFIER_SYSTEM_PROMPT } from './prompt';
-  import { chat, hasApiKey, OpenRouterError } from '$lib/ai/openrouter';
+  import { chat, hasAnyKey as hasApiKey } from '$lib/ai/gateway';
+  import { GatewayError as OpenRouterError } from '$lib/ai/types';
   import ModelPickerV2 from '$lib/components/ai/ModelPickerV2.svelte';
   import { createPersistedState } from '$lib/stores/_persisted.svelte';
   import { base } from '$app/paths';
