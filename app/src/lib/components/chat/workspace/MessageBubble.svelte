@@ -1,0 +1,181 @@
+<script lang="ts">
+  import type { MessageRow, ChatRow } from '$lib/chat/types';
+  import ReasoningBlock from './ReasoningBlock.svelte';
+  import ToolCallCard from './ToolCallCard.svelte';
+  import { forkChat } from '$lib/chat/dispatch';
+  import { goto } from '$app/navigation';
+  import { base } from '$app/paths';
+  import { Streamdown } from 'svelte-streamdown';
+  import { cn } from '$lib/utils/cn';
+  import Copy from 'lucide-svelte/icons/copy';
+  import Check from 'lucide-svelte/icons/check';
+  import GitBranch from 'lucide-svelte/icons/git-branch';
+  import ChevronRight from 'lucide-svelte/icons/chevron-right';
+  import Logo from '$lib/components/brand/Logo.svelte';
+  import UserIcon from 'lucide-svelte/icons/user';
+  import Wrench from 'lucide-svelte/icons/wrench';
+  import Info from 'lucide-svelte/icons/info';
+
+  type Props = { message: MessageRow; chat: ChatRow; live?: boolean };
+  let { message, chat, live = false }: Props = $props();
+
+  let copied = $state(false);
+
+  async function handleFork() {
+    try {
+      const newChat = await forkChat(chat, message.id);
+      await goto(`${base}/chat/${newChat.id}`);
+    } catch (err) {
+      console.error('[fork] failed:', err);
+      alert('Fork failed: ' + (err as Error).message);
+    }
+  }
+
+  async function copyContent() {
+    await navigator.clipboard.writeText(message.content);
+    copied = true;
+    setTimeout(() => { copied = false; }, 1800);
+  }
+
+  /** Strip UUID prefix from openai-compat qualified IDs, e.g.
+   *  openai-compat:bb0c89de-3f43.../openai/gpt-oss-120b → openai/gpt-oss-120b */
+  function prettyModel(qualifiedId: string | undefined): string {
+    if (!qualifiedId) return '';
+    const parts = qualifiedId.split(':');
+    const suffix = parts[parts.length - 1] ?? qualifiedId;
+    if (suffix.includes('/')) {
+      const segments = suffix.split('/');
+      // If first segment looks like a UUID (contains - and len~36), drop it
+      if (segments[0].includes('-') && segments[0].length >= 32) segments.shift();
+      return segments.join('/');
+    }
+    return suffix;
+  }
+
+  const modelLabel = $derived(prettyModel(message.modelRequested ?? message.modelReturned));
+
+  const timestamp = $derived(
+    new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  );
+
+  const isUser      = $derived(message.role === 'user');
+  const isAssistant = $derived(message.role === 'assistant');
+  const isTool      = $derived(message.role === 'tool');
+  const isSystem    = $derived(message.role === 'system');
+
+  // Slash mutator technique ids + btw. Composer modes (creative/intelligent/adaptive) are excluded
+  // so that mode-wrapped messages don't show a spurious collapsible.
+  const SLASH_MUTATORS = new Set([
+    'rephrase', 'obfuscate', 'roleplay', 'multilingual',
+    'expand', 'compress', 'metaphor', 'fragment', 'custom', 'btw'
+  ]);
+</script>
+
+<div class="chat-bubble-enter mb-2.5 flex items-start gap-2.5 {isUser ? 'flex-row-reverse' : 'flex-row'}">
+  <!-- Avatar -->
+  <div class="flex-none mt-0.5">
+    {#if isUser}
+      <div class="grid h-7 w-7 place-items-center rounded-full bg-primary/20 text-primary">
+        <UserIcon size={14} />
+      </div>
+    {:else if isAssistant}
+      <div class={cn(
+        'grid h-7 w-7 place-items-center rounded-full bg-accent/15 border border-accent/30',
+        live && 'animate-pulse'
+      )}>
+        <Logo size={16} />
+      </div>
+    {:else if isTool}
+      <div class="grid h-7 w-7 place-items-center rounded-full bg-muted text-muted-foreground">
+        <Wrench size={13} />
+      </div>
+    {:else}
+      <div class="grid h-7 w-7 place-items-center rounded-full bg-muted/40 text-muted-foreground">
+        <Info size={13} />
+      </div>
+    {/if}
+  </div>
+
+  <article
+    class={cn(
+      'chat-bubble group min-w-[80px] max-w-[85%] rounded-xl border px-3.5 py-2.5 text-sm transition-colors',
+      isUser      && 'border-primary/15 bg-primary/5',
+      isAssistant && 'border-border/50 bg-card/40',
+      isTool      && 'border-primary/20 bg-primary/5',
+      isSystem    && 'border-border/30 bg-card/20 opacity-60'
+    )}
+  >
+  <header class="mb-1 flex items-center justify-between text-[10px] text-muted-foreground">
+    <span class="flex items-center gap-1.5">
+      {modelLabel ? modelLabel : message.role}{live ? ' · streaming…' : ''}
+    </span>
+    <div class="flex items-center gap-2 opacity-60 hover:opacity-100 transition-opacity">
+      <button
+        type="button"
+        onclick={copyContent}
+        aria-label="Copy message"
+        class="rounded p-0.5 hover:bg-muted/40 hover:text-foreground transition-colors"
+      >
+        {#if copied}
+          <Check size={11} />
+        {:else}
+          <Copy size={11} />
+        {/if}
+      </button>
+      {#if isAssistant && !live && message.id !== 'streaming'}
+        <button
+          type="button"
+          onclick={handleFork}
+          class="inline-flex items-center gap-1 rounded p-0.5 hover:bg-muted/40 hover:text-foreground transition-colors"
+          aria-label="Fork from this message"
+        >
+          <GitBranch size={11} /> Fork
+        </button>
+      {/if}
+    </div>
+  </header>
+
+  {#if live}
+    <div class="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
+      <span class="inline-block h-2 w-2 animate-pulse rounded-full bg-primary"></span>
+      <span class="animate-pulse">Thinking…</span>
+    </div>
+  {/if}
+
+  {#if message.reasoning}
+    <ReasoningBlock text={message.reasoning} {live} />
+  {/if}
+
+  {#if message.toolCalls}
+    {#each message.toolCalls as call (call.toolCallId)}
+      <ToolCallCard {call} />
+    {/each}
+  {/if}
+
+  {#if isAssistant || isTool}
+    <div class="prose prose-sm dark:prose-invert max-w-none min-w-0 leading-relaxed text-foreground">
+      <Streamdown content={message.content} />
+    </div>
+  {:else if isUser && message.modeApplied && SLASH_MUTATORS.has(message.modeApplied) && message.contentRaw && message.contentRaw !== message.content}
+    <!-- Slash mutator: show original slash command + collapsible with the mutated result -->
+    <p class="whitespace-pre-wrap leading-relaxed">{message.contentRaw}</p>
+    <details class="group mt-2 rounded-md border border-border/40 bg-muted/20 text-xs">
+      <summary class="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-muted-foreground hover:text-foreground select-none">
+        <ChevronRight size={11} class="transition-transform group-open:rotate-90" />
+        <span>Mutated via /{message.modeApplied}</span>
+      </summary>
+      <div class="max-h-60 overflow-y-auto cryptex-scroll border-t border-border/40 px-3 py-2">
+        <pre class="whitespace-pre-wrap font-mono text-[11px] leading-relaxed text-muted-foreground">{message.content}</pre>
+      </div>
+    </details>
+  {:else}
+    <!-- Plain user message OR mode-applied (show contentRaw if present, else content) -->
+    <p class="whitespace-pre-wrap leading-relaxed">{message.contentRaw ?? message.content}</p>
+  {/if}
+
+  <!-- Timestamp footer -->
+  <footer class="mt-1.5 flex justify-end">
+    <time class="text-[10px] text-muted-foreground opacity-60">{timestamp}</time>
+  </footer>
+  </article>
+</div>

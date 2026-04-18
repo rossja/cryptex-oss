@@ -3,12 +3,12 @@
   import Wordmark from '$lib/components/brand/Wordmark.svelte';
   import Logo from '$lib/components/brand/Logo.svelte';
   import ThemeToggle from './ThemeToggle.svelte';
+  import ModePill from './ModePill.svelte';
   import Github from 'lucide-svelte/icons/github';
   import Settings from 'lucide-svelte/icons/settings';
   import History from 'lucide-svelte/icons/history';
   import HelpCircle from 'lucide-svelte/icons/circle-help';
   import { sessionLog } from '$lib/stores/sessionLog.svelte';
-  import ModePill from './ModePill.svelte';
 
   interface Props {
     onopenHistory: () => void;
@@ -18,19 +18,15 @@
 
 <header class="sticky top-0 z-30 border-b border-border/60 glass backdrop-saturate-150">
   <div class="container flex h-14 items-center justify-between gap-4">
-    <a href={base + '/'} class="flex items-center gap-2.5 transition-opacity hover:opacity-85">
-      <Logo size={26} />
-      <Wordmark size="md" />
-      <span
-        class="hidden sm:inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-primary"
-      >
-        <span class="h-1 w-1 rounded-full bg-primary" aria-hidden="true"></span>
-        red-team
-      </span>
-    </a>
+    <div class="flex items-center gap-3">
+      <a href={base + '/'} class="flex items-center gap-2.5 transition-opacity hover:opacity-85">
+        <Logo size={26} />
+        <Wordmark size="md" />
+      </a>
+      <ModePill />
+    </div>
 
     <div class="flex items-center gap-2">
-      <ModePill />
       <button
         type="button"
         onclick={onopenHistory}

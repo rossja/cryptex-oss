@@ -1,6 +1,7 @@
 <script lang="ts">
   import { page } from '$app/stores';
   import { repo } from '$lib/chat/repo';
+  import { liveQuery } from 'dexie';
   import type { ChatRow } from '$lib/chat/types';
   import ChatWorkspace from '$lib/components/chat/workspace/ChatWorkspace.svelte';
 
@@ -8,14 +9,18 @@
   let loading = $state(true);
   let missing = $state(false);
 
-  async function load(id: string) {
+  $effect(() => {
+    const id = $page.params.id ?? '';
     loading = true; missing = false;
-    const row = await repo.getChat(id);
-    if (!row) { missing = true; chat = null; } else { chat = row; }
-    loading = false;
-  }
-
-  $effect(() => { if ($page.params.id) load($page.params.id); });
+    const subscription = liveQuery(() => repo.getChat(id)).subscribe({
+      next: (row) => {
+        if (!row) { missing = true; chat = null; } else { chat = row; missing = false; }
+        loading = false;
+      },
+      error: (err) => { console.error('[chat liveQuery]', err); loading = false; }
+    });
+    return () => subscription.unsubscribe();
+  });
 </script>
 
 {#if loading}

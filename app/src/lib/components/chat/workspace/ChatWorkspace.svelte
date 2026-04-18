@@ -1,13 +1,89 @@
 <script lang="ts">
-  import type { ChatRow } from '$lib/chat/types';
+  import type { ChatRow, MessageRow } from '$lib/chat/types';
+  import { repo } from '$lib/chat/repo';
   import ChatHeader from './ChatHeader.svelte';
+  import MessageList from './MessageList.svelte';
+  import MessageBubble from './MessageBubble.svelte';
+  import Composer from '../composer/Composer.svelte';
+
   type Props = { chat: ChatRow };
   let { chat }: Props = $props();
+  let messages = $state<MessageRow[]>([]);
+  let streaming = $state(false);
+  let messageListEl = $state<{ scrollToBottom: () => void; scrollToBottomIfPinned: () => void } | null>(null);
+
+  let streamingContent = $state('');
+  let streamingReasoning = $state('');
+
+  // Local activeMode state for instant pill feedback; DB write happens in setActiveMode.
+  let activeMode = $state<string | null>(chat.settings.activeMode ?? null);
+  // Sync with incoming chat prop when chat changes (e.g. navigation to different chat)
+  $effect(() => { activeMode = chat.settings.activeMode ?? null; });
+
+  async function setActiveMode(id: string | null) {
+    activeMode = id; // instant visual update
+    try {
+      await repo.updateChat(chat.id, { settings: { ...chat.settings, activeMode: id } });
+    } catch (err) {
+      console.error('[mode] failed:', err);
+      alert('Mode update failed: ' + (err as Error).message);
+      activeMode = chat.settings.activeMode ?? null; // revert on error
+    }
+  }
+
+  async function refresh() { messages = await repo.listMessages(chat.id); }
+  $effect(() => { refresh(); });
+
+  // Unconditional scroll to bottom whenever the message list grows (user send or assistant finish).
+  // During streaming deltas we use pin-aware scroll so the user can scroll up to read without fighting.
+  $effect(() => {
+    messages.length; // reactive dep — re-runs on every append
+    messageListEl?.scrollToBottom();
+  });
+
+  function onMessageAppended(msg: MessageRow) {
+    messages = [...messages, msg];
+    refresh();
+    streamingContent = '';
+    streamingReasoning = '';
+    // scrollToBottom is triggered by the $effect above reacting to messages.length
+  }
+
+  function onTextDelta(delta: string) {
+    streamingContent += delta;
+    messageListEl?.scrollToBottomIfPinned();
+  }
+  function onReasoningDelta(delta: string) { streamingReasoning += delta; }
 </script>
 
-<div class="flex h-full flex-col gap-2">
+<div class="fade-in flex h-full flex-col gap-2">
   <ChatHeader {chat} />
-  <div class="flex-1 overflow-y-auto p-2 text-sm text-muted-foreground">
-    Commits 3–5 render messages, composer, techniques.
-  </div>
+  <MessageList bind:this={messageListEl} {chat} {messages} />
+
+  {#if streaming}
+    <MessageBubble
+      {chat}
+      message={{
+        id: 'streaming',
+        ownerId: 'local',
+        chatId: chat.id,
+        role: 'assistant',
+        createdAt: Date.now(),
+        content: streamingContent,
+        reasoning: streamingReasoning || undefined,
+        tags: []
+      } as MessageRow}
+      live={true}
+    />
+  {/if}
+
+  <Composer
+    {chat}
+    {activeMode}
+    onModeChange={setActiveMode}
+    {onMessageAppended}
+    {onTextDelta}
+    {onReasoningDelta}
+    onStreamingChanged={(v) => (streaming = v)}
+  />
 </div>

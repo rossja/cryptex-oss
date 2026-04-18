@@ -11,8 +11,9 @@
     onChange: (qualifiedId: string) => void;
     recentsKey: string;      // e.g. 'cryptex.pc.recentModels'
     defaultOpen?: boolean;
+    triggerClass?: string;
   };
-  let { value, onChange, recentsKey, defaultOpen = false }: Props = $props();
+  let { value, onChange, recentsKey, defaultOpen = false, triggerClass = '' }: Props = $props();
 
   initCatalogStore();
 
@@ -78,7 +79,7 @@
 </script>
 
 <button type="button" onclick={() => open = !open}
-  class="rounded-md border border-white/10 bg-black/30 px-3 py-1.5 text-sm hover:bg-black/40 hover:border-white/20 transition-colors">
+  class={triggerClass || "rounded-md border border-white/10 bg-black/30 px-3 py-1.5 text-sm hover:bg-black/40 hover:border-white/20 transition-colors"}>
   {selectedLabel}
 </button>
 

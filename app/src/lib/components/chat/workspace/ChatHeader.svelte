@@ -1,9 +1,18 @@
 <script lang="ts">
   import type { ChatRow } from '$lib/chat/types';
   import { repo } from '$lib/chat/repo';
+  import { goto } from '$app/navigation';
+  import { base } from '$app/paths';
+  import ModelPickerV2 from '$lib/components/ai/ModelPickerV2.svelte';
+  import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
+  import EllipsisVertical from 'lucide-svelte/icons/ellipsis-vertical';
+  import { lastChatModel } from '$lib/stores/lastChatModel.svelte';
+
   type Props = { chat: ChatRow };
   let { chat }: Props = $props();
+
   let title = $state(chat.title);
+  let titleInput = $state<HTMLInputElement | null>(null);
 
   $effect(() => { title = chat.title; });
 
@@ -12,14 +21,65 @@
     if (!trimmed || trimmed === chat.title) return;
     await repo.updateChat(chat.id, { title: trimmed });
   }
+
+  async function onModelChange(v: string) {
+    await repo.updateChat(chat.id, { modelQualifiedId: v });
+    lastChatModel.value = v;
+  }
+
+  function focusTitle() {
+    titleInput?.focus();
+    titleInput?.select();
+  }
+
+  async function duplicateChat() {
+    const newChat = await repo.duplicateChat(chat.id);
+    if (newChat) goto(`${base}/chat/${newChat.id}`);
+  }
+
+  async function deleteChat() {
+    await repo.deleteChat(chat.id);
+    goto(`${base}/chat`);
+  }
+
+  function exportJson() {
+    const blob = new Blob([JSON.stringify(chat, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `${chat.title.replace(/\s+/g, '_')}.json`;
+    a.click(); URL.revokeObjectURL(url);
+  }
 </script>
 
-<div class="flex items-center gap-2 border-b border-white/10 pb-2">
+<div class="flex items-center gap-3 border-b border-border/30 px-3 py-2">
   <input
+    bind:this={titleInput}
     type="text"
     bind:value={title}
     onblur={saveTitle}
-    class="flex-1 bg-transparent font-serif text-lg outline-none focus:ring-0"
+    class="min-w-0 flex-1 bg-transparent font-serif text-base outline-none focus:outline-none placeholder:text-muted-foreground"
     aria-label="Chat title"
   />
+  <ModelPickerV2 value={chat.modelQualifiedId} onChange={onModelChange} recentsKey="cryptex.chat.recentModels" triggerClass="text-xs text-muted-foreground border border-border/40 rounded-full px-3 py-1 hover:border-border/70 hover:text-foreground transition-colors" />
+  <DropdownMenu.Root>
+    <DropdownMenu.Trigger>
+      {#snippet child({ props })}
+        <button
+          type="button"
+          {...props}
+          class="inline-flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-muted/40 hover:text-foreground transition-colors"
+          aria-label="Chat options"
+        >
+          <EllipsisVertical size={14} />
+        </button>
+      {/snippet}
+    </DropdownMenu.Trigger>
+    <DropdownMenu.Content align="end" class="w-40">
+      <DropdownMenu.Item onclick={focusTitle}>Rename</DropdownMenu.Item>
+      <DropdownMenu.Item onclick={duplicateChat}>Duplicate</DropdownMenu.Item>
+      <DropdownMenu.Item onclick={exportJson}>Export as JSON</DropdownMenu.Item>
+      <DropdownMenu.Separator />
+      <DropdownMenu.Item onclick={deleteChat} class="text-destructive focus:text-destructive">Delete</DropdownMenu.Item>
+    </DropdownMenu.Content>
+  </DropdownMenu.Root>
 </div>

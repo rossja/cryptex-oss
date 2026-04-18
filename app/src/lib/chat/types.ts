@@ -117,7 +117,7 @@ export interface ToolStateRow {
 }
 
 export const DEFAULT_CHAT_SETTINGS: ChatSettings = {
-  systemPrompt: '',
+  systemPrompt: 'You are Cryptex, a helpful assistant for security research, prompt engineering, and text transformation. Respond in English unless the user writes in another language. Be concise and useful.',
   temperature: 0.7,
   activeMode: null,
   godmodeEnabled: false,

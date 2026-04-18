@@ -85,12 +85,22 @@ export default defineConfig({
       'lucide-svelte/icons/split',
       'lucide-svelte/icons/star',
       'lucide-svelte/icons/sun',
+      'lucide-svelte/icons/pencil',
       'lucide-svelte/icons/trash-2',
       'lucide-svelte/icons/triangle-alert',
       'lucide-svelte/icons/wand-sparkles',
       'lucide-svelte/icons/wrench',
       'lucide-svelte/icons/x',
-      'lucide-svelte/icons/zap'
+      'lucide-svelte/icons/zap',
+      // Commit 4: new icons for chat workspace
+      'lucide-svelte/icons/git-branch',
+      'lucide-svelte/icons/square',
+      // Chat polish: avatar icons
+      'lucide-svelte/icons/user',
+      // Markdown streaming renderer
+      'svelte-streamdown',
+      // Syntax highlighting
+      'shiki'
     ]
   },
   test: {

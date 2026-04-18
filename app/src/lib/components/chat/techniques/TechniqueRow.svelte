@@ -10,7 +10,7 @@
   type="button"
   onclick={() => { if (!disabled) onClick(technique); }}
   {disabled}
-  class="flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed"
+  class="flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-muted/40 disabled:opacity-50 disabled:cursor-not-allowed"
 >
   <span class="truncate flex-1">{technique.name}</span>
   <span class="text-muted-foreground">{technique.local ? '·' : '⚡'}</span>

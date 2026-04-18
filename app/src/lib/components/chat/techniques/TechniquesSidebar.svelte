@@ -1,12 +1,14 @@
 <script lang="ts">
-  import { allTechniques, byCategory, search } from '$lib/chat/techniques/registry';
+  import { allTechniques, search } from '$lib/chat/techniques/registry';
   import { pushRecent } from '$lib/stores/techniqueRecents.svelte';
   import type { Technique, TechniqueCategory } from '$lib/chat/techniques/types';
   import TechniqueSearchInput from './TechniqueSearchInput.svelte';
   import TechniqueGroup from './TechniqueGroup.svelte';
   import TechniqueRecent from './TechniqueRecent.svelte';
+  import { onMount } from 'svelte';
 
   let query = $state('');
+  let searchInputRef = $state<HTMLInputElement | null>(null);
 
   const filtered = $derived(query.trim() ? search(query) : allTechniques());
 
@@ -24,11 +26,20 @@
     pushRecent(t.id);
     window.dispatchEvent(new CustomEvent('technique:select', { detail: { id: t.id } }));
   }
+
+  onMount(() => {
+    const handler = () => searchInputRef?.focus();
+    window.addEventListener('techniques:focus-search', handler);
+    return () => window.removeEventListener('techniques:focus-search', handler);
+  });
 </script>
 
 <div class="flex h-full flex-col">
-  <TechniqueSearchInput value={query} onChange={(v) => (query = v)} />
-  <div class="mt-2 flex-1 overflow-y-auto">
+  <p class="mb-2 px-1 text-[10px] leading-snug text-muted-foreground">
+    Click a technique to transform selected text, or type <code class="font-mono">/slug</code> in the composer.
+  </p>
+  <TechniqueSearchInput value={query} onChange={(v) => (query = v)} inputRef={(el) => (searchInputRef = el)} />
+  <div class="mt-2 flex-1 overflow-y-auto cryptex-scroll">
     {#if !query}<TechniqueRecent onClick={handleClick} />{/if}
     <TechniqueGroup label="Transform" items={transform} onClick={handleClick} />
     <TechniqueGroup label="Mutate" items={mutate} onClick={handleClick} />

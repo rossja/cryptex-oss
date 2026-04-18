@@ -18,7 +18,7 @@ export const repo = {
       createdAt: now,
       updatedAt: now,
       modelQualifiedId: input.modelQualifiedId,
-      settings: { ...DEFAULT_CHAT_SETTINGS, ...(input.settings ?? {}) },
+      settings: JSON.parse(JSON.stringify({ ...DEFAULT_CHAT_SETTINGS, ...(input.settings ?? {}) })),
       parentChatId: input.parentChatId,
       parentMessageId: input.parentMessageId,
       tags: []
@@ -43,7 +43,8 @@ export const repo = {
   async updateChat(id: string, patch: Partial<ChatRow>): Promise<void> {
     const existing = await this.getChat(id);
     if (!existing) return;
-    await db.chats.put({ ...existing, ...patch, updatedAt: Date.now() });
+    const merged = { ...existing, ...patch, updatedAt: Date.now() };
+    await db.chats.put(JSON.parse(JSON.stringify(merged)));
   },
 
   async deleteChat(id: string): Promise<void> {
@@ -53,24 +54,26 @@ export const repo = {
   },
 
   async saveMessage(input: Omit<MessageRow, 'id' | 'ownerId' | 'createdAt'>): Promise<MessageRow> {
-    const row: MessageRow = {
+    const base: MessageRow = {
       ...input,
       id: ulid(),
       ownerId: ownerId(),
       createdAt: Date.now(),
-      tags: input.tags ?? []
+      tags: input.tags ? [...input.tags] : []
     };
+    // Strip $state proxies that IndexedDB can't structured-clone
+    const row: MessageRow = JSON.parse(JSON.stringify(base));
     await db.messages.put(row);
     // bump parent chat updatedAt — v1 non-transactional; two tabs may race, acceptable until sync layer lands
     const chat = await this.getChat(input.chatId);
-    if (chat) await db.chats.put({ ...chat, updatedAt: Date.now() });
+    if (chat) await db.chats.put(JSON.parse(JSON.stringify({ ...chat, updatedAt: Date.now() })));
     return row;
   },
 
   async updateMessage(id: string, patch: Partial<MessageRow>): Promise<void> {
     const existing = await db.messages.get(id);
     if (!existing || existing.ownerId !== ownerId()) return;
-    await db.messages.put({ ...existing, ...patch });
+    await db.messages.put(JSON.parse(JSON.stringify({ ...existing, ...patch })));
   },
 
   async listMessages(chatId: string): Promise<MessageRow[]> {
@@ -80,12 +83,21 @@ export const repo = {
 
   async saveAttachment(input: Omit<AttachmentRow, 'id' | 'ownerId' | 'createdAt' | 'updatedAt'>): Promise<AttachmentRow> {
     const now = Date.now();
+    // Blobs must bypass JSON; snapshot scalar fields, keep blobs as-is.
     const row: AttachmentRow = {
-      ...input,
       id: ulid(),
       ownerId: ownerId(),
+      messageId: input.messageId,
+      kind: input.kind,
+      name: input.name,
+      mime: input.mime,
+      size: input.size,
+      extractedText: input.extractedText,
+      blob: input.blob,
+      thumbnail: input.thumbnail,
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
+      tombstoned: input.tombstoned
     };
     await db.attachments.put(row);
     return row;
@@ -94,5 +106,35 @@ export const repo = {
   async listAttachments(messageId: string): Promise<AttachmentRow[]> {
     const all = await db.attachments.where('messageId').equals(messageId).toArray();
     return all.filter((a) => a.ownerId === ownerId() && !a.tombstoned);
+  },
+
+  async duplicateChat(id: string): Promise<ChatRow | undefined> {
+    const source = await this.getChat(id);
+    if (!source) return undefined;
+    const newChat = await this.createChat({
+      title: `${source.title} (copy)`,
+      modelQualifiedId: source.modelQualifiedId,
+      settings: { ...source.settings }
+    });
+    const msgs = await this.listMessages(id);
+    for (const m of msgs) {
+      await this.saveMessage({
+        chatId: newChat.id,
+        role: m.role,
+        content: m.content,
+        contentRaw: m.contentRaw,
+        reasoning: m.reasoning,
+        toolCalls: m.toolCalls,
+        modelRequested: m.modelRequested,
+        systemPromptSnapshot: m.systemPromptSnapshot,
+        samplingParams: m.samplingParams,
+        modeApplied: m.modeApplied,
+        tokenUsage: m.tokenUsage,
+        finishReason: m.finishReason,
+        latencyMs: m.latencyMs,
+        tags: [...(m.tags ?? [])]
+      });
+    }
+    return newChat;
   }
 };
