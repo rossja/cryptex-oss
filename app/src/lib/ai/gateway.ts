@@ -9,6 +9,7 @@ import { catalog, refreshCatalog } from './catalog.svelte';
 import type { Adapter } from './adapters/base';
 import { openrouterAdapter } from './adapters/openrouter';
 import { anthropicAdapter } from './adapters/anthropic';
+import { openaiCompatAdapter } from './adapters/openai-compat';
 
 export { listProviders, hasAnyKey } from './providers.svelte';
 
@@ -18,7 +19,7 @@ function buildAdapter(record: ProviderRecord): Adapter {
   switch (record.id) {
     case 'openrouter': return openrouterAdapter(record);
     case 'anthropic':  return anthropicAdapter(record);
-    case 'openai-compat': throw new GatewayError('openai-compat adapter not installed yet', { category: 'not_found', provider: 'openai-compat' });
+    case 'openai-compat': return openaiCompatAdapter(record);
   }
 }
 

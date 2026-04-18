@@ -3,6 +3,7 @@ import type { Model } from './types';
 import { listProviders } from './providers.svelte';
 import { openrouterAdapter } from './adapters/openrouter';
 import { anthropicAdapter } from './adapters/anthropic';
+import { openaiCompatAdapter } from './adapters/openai-compat';
 
 const CACHE_KEY = 'cryptex.catalogCache.v2';
 const CACHE_TTL_MS = 60 * 60 * 1000;
@@ -34,17 +35,23 @@ async function fetchAll(signal: AbortSignal): Promise<Model[]> {
   const results: Model[] = [];
   for (const p of providers) {
     try {
-      if (p.id === 'openrouter') {
-        const a = openrouterAdapter(p);
-        const models = await a.fetchCatalog(signal);
-        results.push(...models);
+      switch (p.id) {
+        case 'openrouter': {
+          const a = openrouterAdapter(p);
+          results.push(...await a.fetchCatalog(signal));
+          break;
+        }
+        case 'anthropic': {
+          const a = anthropicAdapter(p);
+          results.push(...await a.fetchCatalog(signal));
+          break;
+        }
+        case 'openai-compat': {
+          const a = openaiCompatAdapter(p);
+          results.push(...await a.fetchCatalog(signal));
+          break;
+        }
       }
-      if (p.id === 'anthropic') {
-        const a = anthropicAdapter(p);
-        const models = await a.fetchCatalog(signal);
-        results.push(...models);
-      }
-      // openai-compat lands in Commit 3
     } catch (e) {
       // per-provider failure does not fail the whole catalog
       if ((e as Error)?.name === 'AbortError') throw e;

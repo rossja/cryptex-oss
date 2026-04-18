@@ -38,6 +38,7 @@
   },
   "dependencies": {
     "@ai-sdk/anthropic": "3.0.71",
+    "@ai-sdk/openai-compatible": "2.0.41",
     "@openrouter/ai-sdk-provider": "2.8.0",
     "ai": "6.0.168",
     "gpt-tokenizer": "^2.9.0"
