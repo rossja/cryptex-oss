@@ -73,10 +73,12 @@
         {#if onSwitchProvider}<button type="button" class="underline text-red-200 hover:text-red-100" onclick={onSwitchProvider}>Switch provider</button>{/if}
       {/if}
       {#if error.category === 'cors'}
+        <a href="/guide/cors-proxy/" class="underline text-red-200 hover:text-red-100">Set up a CORS proxy</a>
+        {#if onSwitchProvider}
+          <button type="button" class="underline text-red-200 hover:text-red-100" onclick={onSwitchProvider}>Route via OpenRouter</button>
+        {/if}
         {#if onLearnWhy}
           <button type="button" class="underline text-red-200 hover:text-red-100" onclick={onLearnWhy}>Learn why</button>
-        {:else}
-          <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS" target="_blank" rel="noopener noreferrer" class="underline text-red-200 hover:text-red-100">Learn why</a>
         {/if}
       {/if}
     </div>

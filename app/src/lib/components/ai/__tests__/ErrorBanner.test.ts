@@ -18,9 +18,10 @@ describe('ErrorBanner', () => {
     expect(getByText(/retry in 4s/i)).toBeTruthy();
   });
 
-  it('renders cors with Learn why CTA', () => {
+  it('renders cors with Set up a CORS proxy CTA', () => {
     const err = new GatewayError("can't reach", { category: 'cors', provider: 'openai-compat' });
     const { getByText } = render(ErrorBanner, { error: err });
-    expect(getByText(/Learn why/i)).toBeTruthy();
+    expect(getByText(/Can't reach/i)).toBeTruthy();
+    expect(getByText(/Set up a CORS proxy/i)).toBeTruthy();
   });
 });
