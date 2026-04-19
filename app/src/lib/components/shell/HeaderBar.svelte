@@ -1,5 +1,6 @@
 <script lang="ts">
   import { base } from '$app/paths';
+  import { page } from '$app/stores';
   import Wordmark from '$lib/components/brand/Wordmark.svelte';
   import Logo from '$lib/components/brand/Logo.svelte';
   import ThemeToggle from './ThemeToggle.svelte';
@@ -14,6 +15,25 @@
     onopenHistory: () => void;
   }
   let { onopenHistory }: Props = $props();
+
+  // Guide icon is context-aware: on /chat routes it opens the Chat guide
+  // landing entry; on a specific tool route it opens that tool's guide page;
+  // otherwise it opens the top-level /guide index.
+  const guideHref = $derived.by(() => {
+    const path = $page.url.pathname;
+    if (path.startsWith(base + '/chat')) return `${base}/guide/chat-basics/`;
+    const toolMap: Record<string, string> = {
+      transforms: 'transform',
+      promptcraft: 'promptcraft',
+      anticlassifier: 'anticlassifier',
+      decode: 'decode',
+      emoji: 'emoji'
+    };
+    for (const [route, slug] of Object.entries(toolMap)) {
+      if (path.startsWith(base + '/' + route)) return `${base}/guide/${slug}/`;
+    }
+    return `${base}/guide/`;
+  });
 </script>
 
 <header class="sticky top-0 z-30 border-b border-border/60 glass backdrop-saturate-150">
@@ -45,7 +65,7 @@
         {/if}
       </button>
       <a
-        href={base + '/guide/'}
+        href={guideHref}
         class="hidden sm:inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-card/50 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         aria-label="Open guide"
         title="Guide"
