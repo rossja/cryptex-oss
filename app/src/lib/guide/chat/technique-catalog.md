@@ -188,6 +188,12 @@ and you want to try a one-off transformation without editing source.
 **Tripwires:** Depends entirely on the custom instruction. Treat it as
 "roll your own."
 
+**Parameters:**
+
+- `instruction` (free-form text) — the custom mutation directive to
+  apply verbatim. When absent, the technique degrades to a faithful
+  intent-preserving rewrite.
+
 ---
 
 ### Red-team persona — `/red_team_persona`
