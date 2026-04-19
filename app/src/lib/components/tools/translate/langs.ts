@@ -79,3 +79,7 @@ export function buildTranslatePrompt(langName: string, langCode: string, text: s
     `Please translate the following English text into ${langName}:\n\n${text}`
   );
 }
+
+// TRANSLATE_SYSTEM_PROMPT and buildTranslateUserMessage have moved to ./prompt.ts
+// to be consistent with anticlassifier/prompt.ts and promptcraft/strategies.ts.
+export { TRANSLATE_SYSTEM_PROMPT, buildTranslateUserMessage } from './prompt';

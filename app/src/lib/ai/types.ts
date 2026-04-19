@@ -34,6 +34,8 @@ export type ContentPart =
 export type ChatMessage = {
   role: 'system' | 'user' | 'assistant';
   content: string | ContentPart[];
+  /** Per-message provider options — e.g. Anthropic cache_control, OpenAI annotations. */
+  providerOptions?: Record<string, unknown>;
 };
 
 export type ToolDef = {

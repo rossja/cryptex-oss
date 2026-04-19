@@ -1,4 +1,5 @@
 import { streamChat, chat as gatewayChat } from '$lib/ai/gateway';
+import { tuneParams } from '$lib/ai/prompt-scaffold';
 import type { ChatRow, MessageRow, ToolCallLog } from './types';
 import { repo } from './repo';
 import { find as findTechnique } from './techniques/registry';
@@ -127,10 +128,13 @@ export async function sendTurn(
         const msgs: ChatMessage[] = [];
         if (req.system) msgs.push({ role: 'system', content: req.system });
         msgs.push({ role: 'user', content: req.user });
+        // NOTE: reasoning_effort / thinking_level from tuneParams are not yet threaded through
+        // ChatRequest — future gateway widening will add those knobs. temperature-only for now.
+        const { temperature: tunedTemp } = tuneParams(chat.modelQualifiedId, 'mutate');
         const resp = await gatewayChat({
           model: chat.modelQualifiedId,
           messages: msgs,
-          temperature: req.temperature ?? 0.9,
+          temperature: req.temperature ?? tunedTemp ?? 0.9,
           signal
         });
         return resp.content;

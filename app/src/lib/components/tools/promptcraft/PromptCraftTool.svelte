@@ -1,5 +1,6 @@
 <script lang="ts">
   import { STRATEGIES, getSystemPrompt } from './strategies';
+  import { tuneParams } from '$lib/ai/prompt-scaffold';
   import { chat, hasAnyKey as hasApiKey } from '$lib/ai/gateway';
   import { GatewayError as OpenRouterError } from '$lib/ai/types';
   import ModelPickerV2 from '$lib/components/ai/ModelPickerV2.svelte';
@@ -48,12 +49,15 @@
     const system = getSystemPrompt(s.strategy, s.customInstruction);
     const n = Math.max(1, Math.min(10, s.count));
 
+    // NOTE: reasoning_effort / thinking_level from tuneParams are not yet threaded through
+    // ChatRequest — future gateway widening will add those knobs. temperature-only for now.
+    const { temperature } = tuneParams(modelPref.value, 'mutate');
     const runs = Array.from({ length: n }, () =>
       chat({
         model: modelPref.value,
-        temperature: tempPref.value,
+        temperature: temperature ?? tempPref.value,
         max_tokens: 2048,
-        title: 'Cryptex PromptCraft',
+        title: `Cryptex/PromptCraft/${s.strategy}-v2`,
         messages: [
           { role: 'system', content: system },
           { role: 'user',   content: s.input }

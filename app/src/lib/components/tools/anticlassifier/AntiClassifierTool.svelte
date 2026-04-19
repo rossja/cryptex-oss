@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { ANTICLASSIFIER_SYSTEM_PROMPT } from './prompt';
+  import { ANTICLASSIFIER_SYSTEM_PROMPT, buildAntiClassifierUserMessage } from './prompt';
+  import { unwrap, tuneParams } from '$lib/ai/prompt-scaffold';
   import { chat, hasAnyKey as hasApiKey } from '$lib/ai/gateway';
   import { GatewayError as OpenRouterError } from '$lib/ai/types';
   import ModelPickerV2 from '$lib/components/ai/ModelPickerV2.svelte';
@@ -44,17 +45,29 @@
     lastError = null;
     s.output = '';
     try {
+      // NOTE: reasoning_effort / thinking_level from tuneParams are not yet threaded through
+      // ChatRequest — future gateway widening will add those knobs. temperature-only for now.
+      const { temperature } = tuneParams(modelPref.value, 'analyze');
+      // TODO: wire lexeme analysis findings from $lib/stores/sessionLog or equivalent once the
+      // tool's lexeme-analysis feature lands. Signature supports it: buildAntiClassifierUserMessage(input, lexemeFindings?).
+      const userMessage = buildAntiClassifierUserMessage(s.input);
       const res = await chat({
         model: modelPref.value,
-        temperature: tempPref.value,
+        temperature: temperature ?? tempPref.value,
         max_tokens: s.maxTokens,
-        title: 'Cryptex Anti-Classifier',
+        title: 'Cryptex/AntiClassifier-v2',
         messages: [
-          { role: 'system', content: ANTICLASSIFIER_SYSTEM_PROMPT },
-          { role: 'user',   content: s.input }
+          {
+            role: 'system',
+            content: ANTICLASSIFIER_SYSTEM_PROMPT,
+            providerOptions: {
+              anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } }
+            }
+          },
+          { role: 'user', content: userMessage }
         ]
       });
-      s.output = res.content;
+      s.output = unwrap(res.content, 'json');
       sessionLog.record({
         tool: 'anticlassifier',
         operation: 'transform',

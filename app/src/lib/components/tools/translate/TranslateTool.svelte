@@ -1,5 +1,7 @@
 <script lang="ts">
   import { MAIN_LANGS, EXOTIC_LANGS, getLangCode, flagEmoji, buildTranslatePrompt, type Lang } from './langs';
+  import { TRANSLATE_SYSTEM_PROMPT, buildTranslateUserMessage } from './prompt';
+  import { unwrap, tuneParams } from '$lib/ai/prompt-scaffold';
   import { chat, hasAnyKey as hasApiKey } from '$lib/ai/gateway';
   import { GatewayError as OpenRouterError, type ChatMessage } from '$lib/ai/types';
   import ModelPickerV2 from '$lib/components/ai/ModelPickerV2.svelte';
@@ -38,23 +40,19 @@
   const keyConfigured = $derived(hasApiKey());
 
   function isTranslateGemma(model: string): boolean {
-    return model.includes('translategemma');
+    return model.toLowerCase().includes('translategemma');
   }
 
   function buildMessages(langName: string, langCode: string): ChatMessage[] {
     const prompt = buildTranslatePrompt(langName, langCode, s.input);
     if (isTranslateGemma(modelPref.value)) {
+      // TranslateGemma expects a single user-turn format — leave this path unchanged.
       return [{ role: 'user', content: prompt }];
     }
+    // Non-TranslateGemma: use the 2026-current XML system/user split.
     return [
-      {
-        role: 'system',
-        content:
-          'You are a professional translator using the TranslateGemma translation protocol. ' +
-          'Output ONLY the translated text. No explanations, notes, preamble, or alternatives. ' +
-          'Preserve all formatting, line breaks, and structure.'
-      },
-      { role: 'user', content: prompt }
+      { role: 'system', content: TRANSLATE_SYSTEM_PROMPT },
+      { role: 'user', content: buildTranslateUserMessage(s.input, langName, langCode) }
     ];
   }
 
@@ -76,14 +74,19 @@
     s.output = '';
 
     try {
+      // NOTE: reasoning_effort / thinking_level from tuneParams are not yet threaded through
+      // ChatRequest — future gateway widening will add those knobs. temperature-only for now.
+      const { temperature } = tuneParams(modelPref.value, 'translate');
       const res = await chat({
         model: modelPref.value,
-        temperature: 0.2,
+        temperature: temperature ?? 0.2,
         max_tokens: 4096,
-        title: 'Cryptex TranslateGemma',
+        title: 'Cryptex/Translate-v2',
         messages: buildMessages(langName, langCode)
       });
-      s.output = res.content;
+      s.output = isTranslateGemma(modelPref.value)
+        ? res.content
+        : unwrap(res.content, 'translation');
       sessionLog.record({
         tool: 'translate',
         operation: 'translate',
