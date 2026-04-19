@@ -14,7 +14,7 @@
   import Loader from 'lucide-svelte/icons/loader-circle';
   import Plus from 'lucide-svelte/icons/plus';
   import X from 'lucide-svelte/icons/x';
-  import Key from 'lucide-svelte/icons/key';
+  import NoProviderBanner from '$lib/components/ai/NoProviderBanner.svelte';
   import { base } from '$app/paths';
   import { translateState } from './translate.state.svelte';
   import ErrorBanner from '$lib/components/ai/ErrorBanner.svelte';
@@ -156,15 +156,7 @@
     </p>
   </header>
 
-  {#if !keyConfigured}
-    <div class="flex items-start gap-3 rounded-xl border border-accent/40 bg-accent/10 p-4">
-      <Key size={16} class="text-accent mt-0.5 shrink-0" />
-      <div class="text-sm">
-        <strong class="text-foreground">No provider configured.</strong>
-        <span class="text-muted-foreground"> Add one in <a href={base + '/settings/'} class="text-primary underline underline-offset-2 hover:text-primary/80">Settings</a> to unlock this tool.</span>
-      </div>
-    </div>
-  {/if}
+  <NoProviderBanner context="tool" />
 
   <div class="grid gap-4 lg:grid-cols-2">
     <div class="space-y-2 rounded-xl border border-border bg-card/60 p-4 shadow-glass">

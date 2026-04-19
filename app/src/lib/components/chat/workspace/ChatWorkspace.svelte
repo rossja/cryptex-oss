@@ -6,6 +6,7 @@
   import MessageBubble from './MessageBubble.svelte';
   import Composer from '../composer/Composer.svelte';
   import AttackChainSidebar from '../attack-chain/AttackChainSidebar.svelte';
+  import NoProviderBanner from '$lib/components/ai/NoProviderBanner.svelte';
   import { onMount } from 'svelte';
 
   type Props = { chat: ChatRow };
@@ -68,6 +69,7 @@
 <div class="flex h-full w-full min-h-0 overflow-hidden">
   <div class="fade-in flex h-full min-w-0 min-h-0 flex-1 flex-col gap-2 overflow-hidden">
     <ChatHeader {chat} {attackChainOpen} />
+    <div class="px-3 pt-1"><NoProviderBanner context="chat" compact={true} /></div>
     <MessageList bind:this={messageListEl} {chat} {messages} />
 
     {#if streaming}
