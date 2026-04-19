@@ -10,9 +10,11 @@ order: 1
 Cryptex is an AI red-teamer's text lab. It ships 162 transforms, 13 focused tools,
 a universal decoder, a full chat playground, and a 35-technique Attack Chain —
 all running in your browser. There is no Cryptex server. There is no telemetry.
-The only network calls are the ones you make yourself, with your own BYOK keys
-across OpenRouter, Anthropic direct, or any OpenAI-compatible endpoint, when
-you click a button that says "translate", "run", or "send".
+The only network calls are the ones you make yourself, with your own BYOK keys.
+OpenRouter, Anthropic, OpenAI, Google Gemini, Groq, Together, Fireworks,
+DeepInfra, Cerebras, SambaNova, and any custom OpenAI-compatible endpoint
+all work direct from the browser — no proxy required since the CSP widening
+in 2026-04-19.
 
 It exists because evaluating LLM robustness means feeding the model adversarial
 text and watching what happens. Cryptex is the workbench for that job.

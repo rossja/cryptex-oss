@@ -19,6 +19,19 @@ and supported parameters. Source files:
 - Classifiers — `app/src/lib/chat/techniques/from-classifier.ts`
 - Composites — `app/src/lib/chat/techniques/from-composites.ts`
 
+> **Attack Chain retry order.** The Attack Chain's auto-retry feature
+> uses a curated `FALLBACK_ORDER` list when a layer's output is
+> detected as a refusal. The runner walks the list in order, skipping
+> techniques already tried earlier in the chain, up to four attempts
+> per layer. The 17 techniques in the fallback list:
+> `academic_framing`, `roleplay`, `red_team_persona`, `ctf_framing`,
+> `step_back`, `rfc_style`, `chain_of_verification`,
+> `hypothetical_world`, `in_context_compliance`, `deep_inception`,
+> `payload_split`, `json_schema_coerce`, `rephrase`, `obfuscate`,
+> `fragment`, `technical_register`, `semantic_decomposition`.
+> The list is ordered by expected effectiveness against 2026-trained
+> refusals. See [attack-chain](/guide/attack-chain/) for details.
+
 ## Mutators (21)
 
 Mutators rewrite the user's prompt before it reaches the model. Each

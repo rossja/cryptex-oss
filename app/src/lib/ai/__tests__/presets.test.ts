@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { OPENAI_COMPAT_PRESETS } from '../presets';
 
 describe('openai-compat presets', () => {
-  it('includes the 6 known presets + Custom', () => {
+  it('includes the 8 known presets + Custom', () => {
     const ids = OPENAI_COMPAT_PRESETS.map((p) => p.id);
-    expect(ids).toEqual(expect.arrayContaining(['groq', 'together', 'fireworks', 'deepinfra', 'cerebras', 'sambanova', 'custom']));
+    expect(ids).toEqual(expect.arrayContaining(['openai', 'gemini', 'groq', 'together', 'fireworks', 'deepinfra', 'cerebras', 'sambanova', 'custom']));
   });
 
   it('each non-custom preset has baseURL + docsUrl + defaultTestModel', () => {

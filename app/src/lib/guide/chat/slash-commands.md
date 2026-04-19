@@ -14,16 +14,47 @@ Escape dismisses.
 
 ## How autocomplete works
 
-- Type `/` to open the popup.
-- Keep typing to filter. The filter matches on both the command id
-  (`/rephrase`) and the human name ("Rephrase").
+- Type `/` to open the popup. Typing `/` alone surfaces all 24
+  slash-addressable techniques (21 mutators + 3 composites + `/btw`).
+- Keep typing to filter. The filter fuzzy-matches on the command id
+  (`/rephrase`), the human name ("Rephrase"), the description, and
+  the category — so `/cipher` surfaces `cipher_encode_bypass`,
+  `/rfc` surfaces `rfc_style`, and `/detect` surfaces the composites
+  that target AI-writing detectors.
 - Arrow keys move the selection; Enter confirms; Tab also confirms.
 - Once a command is picked, the rest of your text becomes its argument —
   the text you're asking the technique to rewrite.
-- Slash commands that rewrite your prompt run through the gateway with
-  the technique's scaffolded system prompt, then the rewritten output is
-  sent as your user turn. You see both: the rewrite surfaces as the
-  dispatched content, with the technique labeled above it.
+
+## Cmd-K picker
+
+A second entry point. **Cmd-K** (Ctrl-K on Windows) opens the same
+searchable catalog from anywhere in the chat surface, even when the
+textarea isn't focused. Useful when you want to browse the
+technique catalog, compare descriptions, or jump back to a slash
+command without losing your spot in the transcript.
+
+The Cmd-K picker and the inline `/` popover index the same 24
+entries. Classifier techniques are registered for the Attack Chain
+sidebar but aren't slash-addressable — the Cmd-K picker reflects
+that distinction.
+
+## How the output renders
+
+Slash commands that rewrite your prompt run through the gateway with
+the technique's scaffolded system prompt; the rewritten output is
+then sent as your user turn. Both the rewrite and the original intent
+are preserved: the user bubble paints a unified **SlashCommandBlock**
+— a collapsible panel (smooth expand/collapse animation) with the
+technique name and id in the header, the full rewritten content in
+the body, and a copy button. Click to collapse when the history gets
+dense; click to expand when you want to review what the technique
+produced.
+
+The SlashCommandBlock is the single rendering surface for every slash
+command now — `/rephrase`, `/roleplay`, `/red_team_persona`,
+composites like `/layered_mutation`, and `/btw`. The unified surface
+means fork, regenerate, and copy actions behave consistently across
+the catalog.
 
 ## /btw — out-of-context message
 
