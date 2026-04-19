@@ -17,6 +17,15 @@
     }
   }
 
+  // Reconcile chatMode with the current URL on every navigation so the pill
+  // accurately reflects where the user actually is, not a stale localStorage
+  // value left over from a prior session.
+  $effect(() => {
+    const currentPath = $page.url.pathname.replace(base, '') || '/';
+    const derived: 'chat' | 'tools' = currentPath.startsWith('/chat') ? 'chat' : 'tools';
+    if (chatMode.value !== derived) chatMode.value = derived;
+  });
+
   const active = $derived(chatMode.value);
 </script>
 
