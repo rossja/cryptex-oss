@@ -102,8 +102,6 @@ export default defineConfig({
       'svelte-streamdown',
       // Syntax highlighting
       'shiki',
-      // Dataset Inspector — virtual list for large row sets
-      '@tanstack/svelte-virtual'
     ]
   },
   test: {

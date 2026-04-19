@@ -1,164 +1,183 @@
 # Cryptex 2026 Modernization — Project Status
 
-**Last updated:** 2026-04-18
-**HEAD:** `2c2e191` (origin/master)
+**Last updated:** 2026-04-19
+**HEAD:** `f57db05` (origin/master)
 
-This file is the durable handoff doc for future sessions — it mirrors `Brainstormed-Plan.md`'s five sub-project roadmap and tracks which are shipped vs outstanding. Read this first when picking up the project to skip the context-rebuild overhead.
+Durable handoff doc. Mirrors the five-sub-project roadmap and tracks what's shipped vs outstanding. Read this first when resuming.
 
 ---
 
 ## Roadmap status
 
-| # | Sub-project | Status | Commits (tip) | Notes |
+| # | Sub-project | Status | Tip SHA | Notes |
 |---|---|---|---|---|
-| 1 | **BYOK Gateway** (OpenRouter + Anthropic-direct + OpenAI-compat) | ✅ **SHIPPED** | 7 commits, tip `30ca94e` | Vercel AI SDK 6 behind unified `chat() / streamChat()` facade. ModelPickerV2 with filter chips + Cmd+M. Progressive-disclosure Settings. |
-| 2 | **Prompts & AI-technique overhaul** | 🟡 **NOT STARTED** | — | Independent of #1–#5. Can run any time. Research doc at `.planning/research/brainstorm-prompts.md` has the verbatim rewrites ready. |
-| 3 | **Chat Playground + Research Dataset Pipeline** | ✅ **SHIPPED** | 7 commits, tip `2c2e191` | Multi-chat at `/chat`, streaming, branching, attachments (text+PDF+docx+images/multimodal), Technique registry, Dataset Inspector at `/dataset` with ShareGPT + raw JSONL export. |
-| 4 | **MCP browser integration** | 🟡 **NOT STARTED** | — | Depends on #3's tool surface (already shipped). Research doc at `.planning/research/brainstorm-mcp.md`. |
-| 5 | **WebGPU local models** | 🟡 **NOT STARTED** | — | Depends on #1's gateway provider abstraction (already shipped — just add a `LocalProvider` adapter). Research doc at `.planning/research/brainstorm-webgpu.md`. |
+| 1 | **BYOK Gateway** | ✅ SHIPPED | `30ca94e` | Vercel AI SDK 6 behind unified `chat() / streamChat()`. OpenRouter, Anthropic direct, OpenAI-compat (Groq/Together/Fireworks/DeepInfra/Cerebras/SambaNova/Custom + OpenAI + Gemini presets). |
+| 2 | **Prompts & AI-technique overhaul** | ✅ SHIPPED | `f1f705b` | 17 local-template mutators, 4 LLM-generative, 11 classifiers, 3 composites. FALLBACK_ORDER + auto-retry + Attack Chain sidebar + presets. Guide + technique-catalog + orchestrating-jailbreaks playbook + recipes. |
+| 3 | **Chat Playground + Dataset Pipeline** | ✅ SHIPPED | `f57db05` | Multi-chat, streaming, attachments (image/PDF/DOCX), Dataset Inspector with truncation + mode filters, ShareGPT + raw JSONL export, Attack Chain persistence + run history + custom presets. |
+| 4 | **MCP browser integration** | ⬜ Not started | — | Research at `.planning/research/brainstorm-mcp.md`. Tool surface from #3 already wired. |
+| 5 | **WebGPU local models** | ⬜ Not started | — | Research at `.planning/research/brainstorm-webgpu.md`. Gateway adapter abstraction from #1 already wired. |
+
+---
+
+## Commit log since last status update
+
+Every commit after the original handoff (`2c2e191`), chronological on `master`:
+
+**Sub-project #2 — Prompts overhaul:**
+- `5d303c9` prompt-scaffold module
+- `da2f5a0` 5 new mutators + 3 classifiers + 2 composites (rev 1)
+- `742b912` AntiClassifier + Translate rewrites + tuneParams
+- `a87e710` 2026 technique catalog overhaul
+- `8e39b26` Attack Chain UI (layered attack)
+- `bc14c0f` technique enhancement pass + searchable pickers
+- `409868d` Attack Chain right-drawer + per-layer metadata + refusal detection
+- `1c642e6` copy button + language label on code blocks
+- `df0b346` scroll/composer/preset/highlight regressions from attack-chain sidebar
+- `1473d45` Chain button neutral default + Combobox in Attack Chain
+- `3f87594` context-aware Chat + Tools + Attack Chain guide
+- `a8745d0` code block blends with light mode
+- `4519fb1` persistent preset trigger + unified slash-command preview
+- `e801796` Attack Chain executes final prompt + injects as assistant reply
+- `a8777ff` / `9c3a549` max_tokens default (briefly 8192, reverted to undefined)
+- `9cdfbe0` unified NoProviderBanner across tools + chat
+- `e0798da` auto-retry layers on refusal + composer resize on insert
+- `cb3162b` CORS proxy template + actionable error banner (later scrubbed for SaaS)
+- `1ef7a2b` Attack Chain response truncation + full DB logging
+- `8948728` stop mislabeling openai-compat probe failures as CORS
+- `9bbd2d2` widen CSP connect-src to allow BYOK multi-provider hosts
+- `e3027a7` add OpenAI + Gemini presets; overhaul CORS/CSP and chat guides
+- `216f8e0` scrub self-host surfaces from user-facing guide (SaaS pivot)
+
+**Post-Prompts polish + pipeline integrity:**
+- `5b4f6bb` guide rewrite: technique depth + jailbreak orchestration playbook
+- `60502d9` align technique implementations to the catalog
+- `a44fcb1` local-template execution for templatable Attack Chain layers
+- `f1f705b` production-grade system prompts across every technique
+- `7d9c3d7` themed scrollbar on guide sidebar
+- `65516d2` ModePill reconciles with current URL
+- `438e649` pipeline integrity: max_tokens floor, continue-on-truncation, in-list streaming, truncated flag
+- `cf90f57` reasoning copy button + dataset truncation/mode filters + dispatch audit
+- `f57db05` Attack Chain persistence, run history, custom presets
 
 ---
 
 ## Repository state
 
-- **Branch:** `master` (only branch; atomic-commits-on-master workflow per user preference).
-- **HEAD:** `2c2e191`.
-- **CI:** `.github/workflows/deploy.yml` auto-builds + publishes `dist/` to GitHub Pages on push. Tests: `npm run test:all`.
+- **Branch:** `master` only; atomic-commits-on-master.
+- **HEAD:** `f57db05` (pushed to origin).
+- **CI:** `.github/workflows/deploy.yml` builds + publishes on push.
 - **Key dirs:**
-  - `app/` — new SvelteKit 2 + Svelte 5 app (active).
-  - `js/`, `css/`, `templates/`, `build/` — legacy Vue 2 app, frozen; will be removed in a future Phase 4.
-  - `src/transformers/` — 159 canonical transformers (source of truth for legacy, SvelteKit, and Python CLI).
+  - `app/` — SvelteKit 2 + Svelte 5 app (active production).
+  - `js/`, `css/`, `templates/`, `build/` — legacy Vue 2, frozen; Phase 4 removal deferred.
+  - `src/transformers/` — 162 canonical transformers (source of truth for legacy, SvelteKit, CLI).
+  - `docs/superpowers/` — specs + plans.
+  - `docs/infrastructure/` — internal engineering notes (CORS/CSP reference).
+  - `infra/cors-proxy/` — internal-use Cloudflare Worker template (not user-facing).
   - `.planning/` — research docs + codebase scan.
-  - `docs/superpowers/specs/` — sub-project design specs.
-  - `docs/superpowers/plans/` — per-commit implementation plans.
 
 ---
 
-## Sub-project artifacts (pickup-ready)
+## Active app surfaces (pickup reference)
 
-### Sub-project #1 — BYOK Gateway (SHIPPED)
+### Chat (`/chat`, `/chat/:id`)
+- Multi-provider streaming via `$lib/ai/gateway.ts`
+- Mode pills (Creative / Intelligent / Adaptive)
+- Slash commands: 24 mutator+composite + `/btw`
+- Unified `SlashCommandBlock` collapsible in user bubble
+- Attachments: image (multimodal), PDF (pdfjs-dist), DOCX (mammoth)
+- Fork, copy, reasoning with copy button, truncation banner with Continue action
+- In-list streaming bubble (no layout jump on turn finish)
+- `truncated?: boolean` persisted on every assistant row
 
-- **Spec:** `docs/superpowers/specs/2026-04-18-byok-gateway-design.md`
-- **Plan:** `docs/superpowers/plans/2026-04-18-byok-gateway-plan.md`
-- **Commits:**
-  - `e6f83f2` feat(ai): gateway facade + OpenRouter adapter
-  - `98998a4` feat(ai): Anthropic-direct adapter
-  - `08b06f1` feat(ai): OpenAI-compat adapter + presets + /models discovery
-  - `33e45ec` feat(settings): progressive-disclosure provider cards + Add-Provider picker
-  - `ccd0264` feat(ai): ModelPickerV2 + capability chips + Cmd+M + recent-5 + free-text
-  - `752fd02` refactor(ai): migrate tool callers to gateway; drop legacy shims
-  - `30ca94e` docs: multi-provider gateway docs + CSP connect-src update
-- **Key modules:** `app/src/lib/ai/gateway.ts`, `$lib/ai/adapters/*`, `$lib/ai/providers.svelte.ts`, `$lib/ai/catalog.svelte.ts`, `$lib/ai/validate.ts`, `$lib/ai/errors.ts`, `$lib/ai/presets.ts`.
-- **Supported providers (as of ship):** OpenRouter (default, CORS-open) • Anthropic direct (`anthropic-dangerous-direct-browser-access`) • OpenAI-compat (Groq/Together/Fireworks/DeepInfra/Cerebras/SambaNova/Custom).
-- **Not supported (documented):** direct OpenAI, direct Google Gemini — both CORS-blocked from browsers. Users route those models through OpenRouter.
-- **Installed SDKs:** `ai@6.0.168`, `@openrouter/ai-sdk-provider@2.8.0`, `@ai-sdk/anthropic@3.0.71`, `@ai-sdk/openai-compatible@2.0.41`.
+### Attack Chain (right drawer)
+- 2-4 layer pipeline, searchable Combobox pickers
+- Per-layer metadata params (roleplay.persona, ctf_framing.*, hypothetical_world.*, cipher_encode_bypass.transformerId, layered_mutation.chain)
+- Execute toggle + final-turn system prompt (isolated from chat history)
+- Auto-retry on refusal via curated 17-technique `FALLBACK_ORDER`
+- Preview final prompt (dry run)
+- Edit intermediate output + re-run from here
+- **Two send-back flows** — assistant-reply injection (via `injectAttackChainTurn`) or composer insert; drawer stays open after either
+- **Drawer state persistence** — debounced 500ms to `chat.settings.attackChainConfig`
+- **Run history** — Dexie `attackChainRuns` table; HistoryPanel in drawer with Restore/Delete
+- **Custom presets** — `cryptex.chain.customPresets` in localStorage; PresetPicker merges built-in + custom with trash-delete
 
-### Sub-project #3 — Chat Playground + Dataset Pipeline (SHIPPED)
+### Tools
+- Transform (162 transformers)
+- PromptCraft (full-registry searchable Combobox; `applyTechniqueForVariant` routes local-template picks correctly)
+- AntiClassifier (XML-scaffolded metric-targeting JSON output)
+- Translate (multilingual bypass, low-resource language presets)
+- Decode (universal decoder)
+- Emoji steganography
+- Gibberish / Fuzzer / Bijection / Splitter / Tokenade / Tokenizer
 
-- **Spec:** `docs/superpowers/specs/2026-04-18-chat-playground-design.md`
-- **Plan:** `docs/superpowers/plans/2026-04-18-chat-playground-plan.md`
-- **Commits:**
-  - `d496f3a` feat(chat): top-level mode switch + Chat shell + shadcn primitives
-  - `58fbad7` feat(chat): Dexie persistence + repo layer + auth-readiness seams
-  - `bfa6976` feat(chat): Technique registry + right sidebar + selection popover
-  - `26845a5` feat(chat): streaming + tool-calling + branching
-  - `c96b32e` feat(chat): attachments + keyboard map + inline errors
-  - `13fd038` feat(chat): Dataset Inspector at /dataset + ShareGPT/raw JSONL export
-  - `2c2e191` docs: chat playground + dataset pipeline
-- **Key modules:**
-  - Routes: `/chat`, `/chat/:id`, `/dataset`.
-  - Persistence: `$lib/chat/db.ts` (Dexie `cryptex-chat`), `$lib/chat/repo.ts`, `$lib/tools/repo.ts`.
-  - Auth-readiness: `$lib/auth/session.svelte.ts`, `$lib/auth/key-vault.ts` (all rows carry `ownerId` + `updatedAt` + `tombstoned`; login retrofit is a config change).
-  - Techniques: `$lib/chat/techniques/registry.ts` wires 159 transformers + 9 mutators + 9 classifier + 3 modes + 1 godmode stub.
-  - Dispatch: `$lib/chat/dispatch.ts` handles slash, mode wrap, streaming, tool loop, branching, fork.
-  - Dataset: `$lib/dataset/queries.ts`, `$lib/dataset/export-sharegpt.ts`, `$lib/dataset/export-raw.ts`, `$lib/dataset/download.ts`.
-- **Shipped features:** multi-chat sidebar with rename/delete/duplicate/bulk-select; Cryptex-branded avatars; streaming via `gateway.streamChat()`; slash commands (9 mutators + `/btw` out-of-context); composer mode pills (Creative/Intelligent/Adaptive as local templates); fork-from-message; selection popover over composer with transform; Cmd+N / Cmd+U / Cmd+M / Cmd+/ / Esc keyboard; attachments (images → multimodal, PDF/docx → extracted text); Dataset Inspector with paging + arrow key nav + liveQuery + ShareGPT + raw JSONL export; rating/thumbs/trainingInclude/tag bulk editing.
-- **Deps added:** `dexie@4.0.11`, `ulid@2.3.0`, `svelte-streamdown@3.0.1`, `shiki@1.29.0`, `pdfjs-dist@4.10.38`, `mammoth@1.9.0`, `fake-indexeddb@6.0.0` (dev), plus hand-rolled shadcn-svelte UI primitives against `bits-ui@1.8.0` (CLI couldn't run non-interactive).
+### Dataset Inspector (`/dataset`)
+- liveQuery paginated table
+- Filters: search, role, truncated-only, modeApplied dropdown (persistent via `createPersistedState`)
+- ShareGPT JSONL + raw JSONL export
+- Per-chat export JSON
 
-### Sub-project #2 — Prompts overhaul (NOT STARTED)
+### Guide (`/guide`)
+- Context-aware header link (from `/chat` → chat-basics; from tool routes → tool entry)
+- Chat category: chat-basics, slash-commands, technique-catalog (hero), orchestrating-jailbreaks (playbook), attack-chain (UI ref), attack-chain-recipes (4 worked examples), refusal-troubleshooting (decision tree keyed to refusal regex)
+- Tools category: transform, promptcraft, anticlassifier, decode, emoji, translate
+- Recipes: layered-encoding, unicode-evasion, jailbreak-bank
+- Policy: faq, privacy
+- Themed scrollbar on sidebar nav
 
-- **Research:** `.planning/research/brainstorm-prompts.md` (922 lines — verbatim rewrites ready).
-- **Suggested next step:** create `docs/superpowers/specs/YYYY-MM-DD-prompts-design.md` following the research doc's proposed rewrites, then `writing-plans` for commit cadence. Scope: rewrite PromptCraft (9 strategies), AntiClassifier, AI Translation system prompts. Add `$lib/ai/prompt-scaffold.ts` (`unwrap()` + `tuneParams()`). Per-model-family parameter tuning. Prompt caching hooks.
-- **Independent of everything else** — ship anytime.
-
-### Sub-project #4 — MCP browser integration (NOT STARTED)
-
-- **Research:** `.planning/research/brainstorm-mcp.md` (351 lines).
-- **Depends on:** Sub-project #3's tool surface (already shipped — slot is ready).
-- **Suggested shape:** M1 Settings UI → M2 Streamable HTTP client (no-auth + header-auth) → M3 OAuth 2.1 + PKCE + CIMD → M4 allowlist + confirm-before-call + rate-limit → M5 unified tool gateway merging transformers + MCP + built-in → M6 elicitation modals.
-
-### Sub-project #5 — WebGPU local models (NOT STARTED)
-
-- **Research:** `.planning/research/brainstorm-webgpu.md` (610 lines).
-- **Depends on:** Sub-project #1's adapter abstraction (already shipped — just add a `LocalProvider`).
-- **Suggested shape:** `@mlc-ai/web-llm` primary runtime → three-tier model picker (Tiny 230 MB / Balanced 2 GB / Power 4.6 GB) → Cache API → first-run download UX → COOP/COEP headers on Dokploy for wllama fallback.
-
----
-
-## How to pick up a sub-project
-
-1. **Read `Brainstormed-Plan.md`** for the umbrella context (already written).
-2. **Read the sub-project's `brainstorm-*.md` research doc** under `.planning/research/`.
-3. **Run `/superpowers:brainstorming`** to surface unknowns with the user (if design not yet locked).
-4. **Run `/superpowers:writing-plans`** to produce the per-commit plan.
-5. **Invoke `superpowers:subagent-driven-development`** to execute commits atomically — one subagent per commit, two-stage review (spec compliance + code quality), user-manual-test gate between each.
-6. Follow the atomic-commits-on-master pattern; user verifies in browser before authorizing each `git push`.
-
-The `/gsd-*` workflow commands exist for structured project management but the Cryptex user prefers the lighter `/superpowers:*` flow.
+### Settings
+- Providers: OpenRouter, Anthropic, OpenAI-compat (presets: Groq, Together, Fireworks, DeepInfra, Cerebras, SambaNova, OpenAI, Gemini, Custom)
+- `Save without verification` fallback when probe fails with network/cors/unknown
+- Per-chat sampling knobs
 
 ---
 
 ## User preferences (carry forward)
 
-- **Branch:** master only, no feature branches.
-- **Commit cadence:** atomic commits; user manually verifies in browser before push.
-- **Reviews:** spec-compliance + code-quality reviewers dispatched in parallel after each commit.
-- **Fixes:** amend the current commit rather than adding "fixup" commits — keeps history clean.
-- **Auto-deploy:** `.github/workflows/deploy.yml` fires on push to `master` — the build MUST pass before every push.
-- **No emojis** in code/commits unless explicitly asked.
-- **Terse, no summaries** in responses — user reads diffs, not prose walkthroughs.
-- **Alert on error** in UI surfaces — silent failures are not OK.
+- **Branch:** `master` only.
+- **Commit cadence:** atomic; user manually verifies in browser before push.
+- **Fixes:** amend when possible; separate commit when amend would touch unrelated territory.
+- **Auto-deploy fires on every push** — build MUST be green before push.
+- **No emojis** in code/commits.
+- **Terse responses**, no prose walkthroughs.
+- **Alert-on-error** in UI — no silent failures.
 
 ---
 
-## Architectural invariants to preserve
+## Architectural invariants
 
-1. **BYOK forever.** No server, no proxied keys. All provider calls browser-direct with user-supplied keys in localStorage.
-2. **Zero telemetry.** Cryptex ships no analytics beyond the existing Plausible-on-Guide. Chat + dataset stays in IndexedDB, never leaves the browser except to the selected provider.
-3. **No Svelte component imports Dexie directly.** All persistence flows through `$lib/chat/repo.ts` or `$lib/dataset/queries.ts` (the only non-repo file allowed to read `db` directly).
-4. **Single Technique registry** — 159 transformers + 9 mutators + 9 classifier + 3 modes + godmode — one source of truth (`$lib/chat/techniques/registry.ts`). Adding a new technique is one file.
-5. **Auth-readiness seams intact.** Every persisted row has `ownerId: 'local'`. `$lib/auth/session.svelte.ts` is the single identity source. When auth lands, this is the one file that changes + rows already carry the owner.
-6. **Build must pass on every push.** Auto-deploy runs immediately.
-
----
-
-## Known deferrals (explicitly NOT done)
-
-- Sub-project #2 (prompts).
-- Sub-project #4 (MCP).
-- Sub-project #5 (WebGPU).
-- Real-time multi-device sync (architected via `updatedAt` + ULIDs + `tombstoned`; not shipped).
-- Login / user management (seams wired; not shipped).
-- Godmode jailbreak chains (pipeline scaffolded + disabled).
-- `DatasetFilters.svelte` state_referenced_locally rune warnings (13 warnings — cosmetic, deferred).
-- Virtualization on Dataset Inspector table (pagination at 50/page replaced it).
-- Projects/workspaces hierarchy for chats.
-- Branching diff view between forked chats.
+1. **BYOK forever, zero telemetry** — all provider calls browser-direct with user-supplied keys in localStorage.
+2. **No Svelte component imports Dexie directly** — all persistence through `$lib/chat/repo.ts` or `$lib/dataset/queries.ts`.
+3. **Every Dexie write** uses `JSON.parse(JSON.stringify(...))` to strip Svelte 5 `$state` proxies (except `saveAttachment` which field-constructs to preserve `Blob` refs).
+4. **Single Technique registry** — `$lib/chat/techniques/registry.ts` is the one source of truth. Adding a technique is one file.
+5. **Auth-readiness seams intact** — every row carries `ownerId` / `updatedAt` / `tombstoned`. When auth lands, only `$lib/auth/session.svelte.ts` changes.
+6. **Per-message `providerOptions`** on `ChatMessage` for Anthropic `cache_control`.
+7. **Build must pass on every push** — auto-deploy runs immediately on `master`.
+8. **SaaS posture** — no self-host surfaces in user-facing guide. Internal infra docs live in `docs/infrastructure/`.
 
 ---
 
-## Outstanding long-standing diff
+## Known deferrals
 
-`DEPLOY.md` has an uncommitted working-tree change (Cloudflare DNS note, ~9 lines) that the user has kept pending across the entire project. Recently-touched DEPLOY.md commits absorbed parts of it; any future deploy-related commit should consult the user on whether to fold or leave it.
+- **Sub-project #4 (MCP browser integration)** — research ready.
+- **Sub-project #5 (WebGPU local models)** — research ready.
+- **Legacy Vue Phase 4 removal** — pending SvelteKit parity signoff.
+- **Real-time multi-device sync** — seams present (ULIDs, `updatedAt`, `tombstoned`); server not built.
+- **Login / user management** — seams wired (`$lib/auth/session.svelte.ts`); auth provider not integrated.
+- **Chat transcript virtualization** — deferred; paginated view handles the common case.
+- **Projects/workspaces hierarchy** for chats.
+- **Branching diff view** between forked chats.
+- **`DatasetFilters.svelte` rune warnings** — cosmetic, 19 state_referenced_locally warnings.
+- **`DEPLOY.md` uncommitted tweak** — long-standing working-tree edit; absorbed partially in recent deploy commits.
 
 ---
 
 ## Quick next-step menu
 
-Pick any of:
+- **A.** Start Sub-project #4 MCP — brainstorm → spec → plan → ship.
+- **B.** Start Sub-project #5 WebGPU — brainstorm → spec → plan → ship.
+- **C.** Legacy Vue Phase 4 removal pass.
+- **D.** Virtualization for long chats (if user reports performance pain).
+- **E.** Auth v2 (swap `session.svelte.ts` + `key-vault.ts` for real identity).
+- **F.** Godmode jailbreak chains (pipeline scaffolded + disabled).
 
-- **Ship Sub-project #2 (Prompts)** — independent, ~7 files changed, ~2–3 commits.
-- **Ship Sub-project #4 (MCP)** — 6 milestones, medium complexity; Streamable HTTP + OAuth 2.1.
-- **Ship Sub-project #5 (WebGPU)** — add `$lib/ai/adapters/local.ts` behind `@mlc-ai/web-llm`, wire into Settings as 4th provider.
-- **Iterate on Chat UX** — gather user feedback on `/chat` and `/dataset`, cycle smaller polish commits.
-- **Legacy Vue removal** — Phase 4 per `CLAUDE.md`; ~12 tool files + 12 templates + build scripts to delete once SvelteKit port is fully parity-verified.
+`/superpowers:brainstorming` → `/superpowers:writing-plans` → `superpowers:subagent-driven-development` is the canonical flow for any new sub-project.
