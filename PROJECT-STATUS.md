@@ -1,6 +1,6 @@
 # Cryptex 2026 Modernization — Project Status
 
-**Last updated:** 2026-04-19
+**Last updated:** 2026-04-20
 **HEAD:** `f57db05` (origin/master)
 
 Durable handoff doc. Mirrors the five-sub-project roadmap and tracks what's shipped vs outstanding. Read this first when resuming.
@@ -58,6 +58,18 @@ Every commit after the original handoff (`2c2e191`), chronological on `master`:
 - `438e649` pipeline integrity: max_tokens floor, continue-on-truncation, in-list streaming, truncated flag
 - `cf90f57` reasoning copy button + dataset truncation/mode filters + dispatch audit
 - `f57db05` Attack Chain persistence, run history, custom presets
+
+**Production prompts pass (sub-project "Prompts production-grade"):**
+- `db876d1` (P0-1) Boris Cherny CLAUDE.md style guide at `docs/prompts/STYLE.md`
+- `949b708` (P0-2) `TechniqueContext.originalInput` preservation primitive (scaffolding)
+- `fa06618` (P1-3) 20 mutator + cipher_encode_bypass prompts rewritten in Cherny style
+- `a2bbf66` (P1-4) shared classifier PREAMBLE + 11 MECHANIC blocks rewritten
+- `f13b900` (P1-5) composite GRAMMAR_PROMPT + 3 mode WRAP consts; modes now functional Attack Chain layers
+- `a0541f1` (P2-6) default final-execution system prompt with ${ORIGINAL_PLACEHOLDER} substitution
+- `5527fcf` (P2-7) composite sub-ctx originalInput propagation + refusal retry reverts to originalInput
+- `db2e01b` (course correction) stripped ORIGINAL QUESTION verbatim echo — re-attachment defeats guardrail bypass; redesigned default final-exec as authority-framed + updated STYLE.md to "Anti-trigger mandate"
+- `6443a8a` (P3-8) 3 unit test files locking ≥250 char floor, CAPITAL directives, no banned softeners, no labeled-echo anti-pattern
+- this commit (P3-9) smoke harness stub + status update
 
 ---
 
@@ -153,6 +165,7 @@ Every commit after the original handoff (`2c2e191`), chronological on `master`:
 6. **Per-message `providerOptions`** on `ChatMessage` for Anthropic `cache_control`.
 7. **Build must pass on every push** — auto-deploy runs immediately on `master`.
 8. **SaaS posture** — no self-host surfaces in user-facing guide. Internal infra docs live in `docs/infrastructure/`.
+9. **Prompts follow the Cherny style guide** at `docs/prompts/STYLE.md`. Additions must pass `prompt-length.test.ts` + `prompt-style.test.ts` + `anti-trigger.test.ts` in CI. The anti-trigger contract: `ctx.originalInput` is internal pipeline state only — NEVER embedded in any prompt sent to an LLM, because re-exposure of trigger tokens defeats the mutation chain.
 
 ---
 
