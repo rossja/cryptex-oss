@@ -28,7 +28,15 @@ async function runChain(chain: string[], input: string, ctx: TechniqueContext, l
       if (import.meta.env.DEV) console.warn(`[${label}] technique '${id}' not found — skipping`);
       continue;
     }
-    const r = await t.apply(current, ctx);
+    // Belt-and-suspenders: propagate originalInput into every sub-step's ctx
+    // so sub-techniques that reference it see the verbatim pipeline entry
+    // text, not the intermediate composite sub-output.
+    const subCtx: TechniqueContext = {
+      ...ctx,
+      originalInput: ctx.originalInput,
+      metadata: ctx.metadata
+    };
+    const r = await t.apply(current, subCtx);
     current = r.output;
   }
   return current;

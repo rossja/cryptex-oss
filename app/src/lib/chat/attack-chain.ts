@@ -238,8 +238,14 @@ export async function* runChain(
         }
       }
 
+      // Primary attempt (a === 0) uses the upstream layer's output as input.
+      // Fallback attempts (a >= 1) revert to the verbatim originalInput so a
+      // bad upstream mutation doesn't infect every retry. This closes
+      // preservation risks #5, #6, #7 from the 2026-04-20 audit.
+      const attemptInput = a === 0 ? current : originalInput;
+
       try {
-        const r = await t.apply(current, layerCtx);
+        const r = await t.apply(attemptInput, layerCtx);
         const refusal = detectRefusal(r.output);
         const durationMs = Date.now() - startedAt;
 
@@ -251,7 +257,7 @@ export async function* runChain(
             attempt: a,
             techniqueId: attemptId,
             techniqueName: t.name,
-            input: current,
+            input: attemptInput,
             output: r.output,
             startedAt,
             durationMs,
@@ -268,7 +274,7 @@ export async function* runChain(
           attempt: a,
           techniqueId: attemptId,
           techniqueName: t.name,
-          input: current,
+          input: attemptInput,
           output: r.output,
           startedAt,
           durationMs,
@@ -286,7 +292,7 @@ export async function* runChain(
           attempt: a,
           techniqueId: attemptId,
           techniqueName: t.name,
-          input: current,
+          input: attemptInput,
           output: '',
           startedAt,
           durationMs: Date.now() - startedAt,
