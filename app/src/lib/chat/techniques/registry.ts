@@ -5,6 +5,7 @@ import { classifierTechniques } from './from-classifier';
 import { compositeTechniques } from './from-composites';
 import { modes } from './modes';
 import { godmodes } from './godmode';
+import { prefillTechniques } from './from-prefills';
 
 let _all: Technique[] | null = null;
 
@@ -15,7 +16,8 @@ function build(): Technique[] {
     ...classifierTechniques(),
     ...compositeTechniques(),
     ...modes,
-    ...godmodes
+    ...godmodes,
+    ...prefillTechniques()
   ];
 }
 
