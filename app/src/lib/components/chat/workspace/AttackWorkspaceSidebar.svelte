@@ -44,6 +44,58 @@
     if (activeTab !== 'godmode') godmodeUnread = true;
   }
 
+  // ---- Resize handle ---------------------------------------------------
+  const MIN_WIDTH = 320;
+  const MAX_WIDTH = 800;
+  const DEFAULT_WIDTH = 440;
+  let width = $state<number>(chat.settings.workspaceWidth ?? DEFAULT_WIDTH);
+  $effect(() => { width = chat.settings.workspaceWidth ?? DEFAULT_WIDTH; });
+
+  let dragging = $state(false);
+  let dragStartX = 0;
+  let dragStartWidth = 0;
+  let persistTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function onResizeStart(e: PointerEvent) {
+    dragging = true;
+    dragStartX = e.clientX;
+    dragStartWidth = width;
+    e.preventDefault();
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    window.addEventListener('pointermove', onResizeMove);
+    window.addEventListener('pointerup', onResizeEnd, { once: true });
+  }
+  function onResizeMove(e: PointerEvent) {
+    if (!dragging) return;
+    // Aside is on the right; dragging left grows it.
+    const next = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, dragStartWidth + (dragStartX - e.clientX)));
+    width = next;
+  }
+  function onResizeEnd() {
+    dragging = false;
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+    window.removeEventListener('pointermove', onResizeMove);
+    // Debounce persist — drag emits many moves per second; write once on release.
+    if (persistTimer) clearTimeout(persistTimer);
+    persistTimer = setTimeout(() => { void persistWidth(width); }, 100);
+  }
+  async function persistWidth(px: number) {
+    try {
+      const fresh = await repo.getChat(chat.id);
+      const base = fresh?.settings ?? chat.settings;
+      await repo.updateChat(chat.id, { settings: { ...base, workspaceWidth: px } });
+    } catch (err) {
+      console.error('[workspace] persist width failed:', err);
+    }
+  }
+  // Double-click the handle to reset to default.
+  function onResizeDoubleClick() {
+    width = DEFAULT_WIDTH;
+    void persistWidth(DEFAULT_WIDTH);
+  }
+
   // Per-tab model picker state — reads from tab config, persists on change.
   const chainModel = $derived(chat.settings.attackChainConfig?.modelQualifiedId ?? chat.modelQualifiedId);
   const godmodeModel = $derived(chat.settings.godmodeConfig?.modelQualifiedId ?? chat.modelQualifiedId);
@@ -96,9 +148,22 @@
 </script>
 
 <aside
-  class="relative flex h-full w-[440px] shrink-0 flex-col border-l border-border/50 bg-card/30 backdrop-blur-sm"
+  class="relative flex h-full shrink-0 flex-col border-l border-border/50 bg-card/30 backdrop-blur-sm"
+  style:width="{width}px"
   aria-label="Attack workspace"
 >
+  <!-- Drag handle on the left edge. Grabbing + dragging left grows the
+       sidebar, right shrinks it. Double-click resets to default width.
+       Highlights on hover + while active. -->
+  <div
+    role="separator"
+    aria-orientation="vertical"
+    aria-label="Resize workspace — drag to resize, double-click to reset"
+    title="Drag to resize · Double-click to reset"
+    onpointerdown={onResizeStart}
+    ondblclick={onResizeDoubleClick}
+    class="absolute inset-y-0 left-0 z-20 w-1.5 -translate-x-1/2 cursor-col-resize hover:bg-primary/40 {dragging ? 'bg-primary/60' : ''} transition-colors"
+  ></div>
   <!-- Sticky header — tab strip + close -->
   <div class="sticky top-0 z-10 flex shrink-0 flex-col gap-2 border-b border-border/50 bg-card/80 px-3 py-2">
     <div class="flex items-center gap-1">

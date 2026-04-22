@@ -6,13 +6,11 @@
   type Props = { text: string; live?: boolean };
   let { text, live = false }: Props = $props();
 
-  let open = $state(false);
+  // Keep open by default — users want to review reasoning metadata
+  // post-stream without clicking to expand. Starts open while live and
+  // stays open when stream finishes. User can still manually collapse.
+  let open = $state(true);
   let copied = $state(false);
-
-  // Open while streaming, close when done
-  $effect(() => {
-    open = live;
-  });
 
   async function copy() {
     try {
@@ -61,7 +59,10 @@
         </button>
       {/if}
     </summary>
-    <div class="max-h-60 overflow-y-auto cryptex-scroll border-t border-border/40 px-3 py-2">
+    <!-- No inner height clamp: full reasoning visible so users can
+         review the model's thinking without a nested scrollbar fighting
+         the main page scroll. -->
+    <div class="border-t border-border/40 px-3 py-2">
       <pre class="whitespace-pre-wrap font-mono text-[11px] leading-relaxed text-muted-foreground">{text}</pre>
     </div>
   </details>

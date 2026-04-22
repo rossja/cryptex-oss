@@ -53,6 +53,9 @@ export interface ChatSettings {
   godmodeConfig?: GodmodeConfig;
   workspaceTab?: 'chain' | 'godmode';
   workspaceOpen?: boolean;
+  /** Width of the right workspace drawer in px. Persisted so the
+   *  user's resize sticks across reloads. Clamped 320..800 at write. */
+  workspaceWidth?: number;
 }
 
 export interface ChatRow {

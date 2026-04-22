@@ -118,34 +118,34 @@
   );
 </script>
 
-<div class="chat-bubble-enter mb-2.5 flex items-start gap-2.5 {isUser ? 'flex-row-reverse' : 'flex-row'}">
+<div class="chat-bubble-enter mb-2 flex items-start gap-2 {isUser ? 'flex-row-reverse' : 'flex-row'}">
   <!-- Avatar -->
   <div class="flex-none mt-0.5">
     {#if isUser}
-      <div class="grid h-7 w-7 place-items-center rounded-full bg-primary/20 text-primary">
-        <UserIcon size={14} />
+      <div class="grid h-6 w-6 place-items-center rounded-full bg-primary/20 text-primary">
+        <UserIcon size={12} />
       </div>
     {:else if isAssistant}
       <div class={cn(
-        'grid h-7 w-7 place-items-center rounded-full bg-accent/15 border border-accent/30',
+        'grid h-6 w-6 place-items-center rounded-full bg-accent/15 border border-accent/30',
         live && 'animate-pulse'
       )}>
-        <Logo size={16} />
+        <Logo size={13} />
       </div>
     {:else if isTool}
-      <div class="grid h-7 w-7 place-items-center rounded-full bg-muted text-muted-foreground">
-        <Wrench size={13} />
+      <div class="grid h-6 w-6 place-items-center rounded-full bg-muted text-muted-foreground">
+        <Wrench size={11} />
       </div>
     {:else}
-      <div class="grid h-7 w-7 place-items-center rounded-full bg-muted/40 text-muted-foreground">
-        <Info size={13} />
+      <div class="grid h-6 w-6 place-items-center rounded-full bg-muted/40 text-muted-foreground">
+        <Info size={11} />
       </div>
     {/if}
   </div>
 
   <article
     class={cn(
-      'chat-bubble group min-w-[80px] max-w-[85%] rounded-xl border px-3.5 py-2.5 text-sm transition-colors',
+      'chat-bubble group min-w-[80px] max-w-[80%] rounded-lg border px-3 py-2 text-[13px] transition-colors',
       isUser      && 'border-primary/15 bg-primary/5',
       isAssistant && 'border-border/50 bg-card/40',
       isTool      && 'border-primary/20 bg-primary/5',
