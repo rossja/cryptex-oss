@@ -204,40 +204,58 @@
       llmDraft = textForLLM;
     }
 
-    await sendTurn(chatWithMode, llmDraft, ctrl.signal, {
-      onTextDelta: (d) => onTextDelta?.(d),
-      onReasoningDelta: (d) => onReasoningDelta?.(d),
-      onUserMessageCreated: async (userMsg) => {
-        const ids: string[] = [];
-        for (const a of sentPending) {
-          try {
-            const saved = await repo.saveAttachment({
-              messageId: userMsg.id,
-              kind: a.extracted.kind as AttachmentRow['kind'],
-              name: a.name,
-              mime: a.blob.type || 'application/octet-stream',
-              size: a.size,
-              extractedText: a.extracted.extractedText,
-              blob: a.blob,
-              thumbnail: a.extracted.thumbnail,
-              tombstoned: false
-            });
-            ids.push(saved.id);
-          } catch (err) {
-            console.error('[attach] failed to save attachment:', err);
+    try {
+      await sendTurn(chatWithMode, llmDraft, ctrl.signal, {
+        onTextDelta: (d) => onTextDelta?.(d),
+        onReasoningDelta: (d) => onReasoningDelta?.(d),
+        onUserMessageCreated: async (userMsg) => {
+          const ids: string[] = [];
+          for (const a of sentPending) {
+            try {
+              const saved = await repo.saveAttachment({
+                messageId: userMsg.id,
+                kind: a.extracted.kind as AttachmentRow['kind'],
+                name: a.name,
+                mime: a.blob.type || 'application/octet-stream',
+                size: a.size,
+                extractedText: a.extracted.extractedText,
+                blob: a.blob,
+                thumbnail: a.extracted.thumbnail,
+                tombstoned: false
+              });
+              ids.push(saved.id);
+            } catch (err) {
+              console.error('[attach] failed to save attachment:', err);
+            }
           }
+          // Always persist contentRaw = what the user typed (without extracted text),
+          // so the bubble can render just the draft + attachment chips.
+          const patch: Partial<import('$lib/chat/types').MessageRow> = { contentRaw: rawDraft };
+          if (ids.length > 0) patch.attachmentIds = ids;
+          await repo.updateMessage(userMsg.id, patch);
+        },
+        onFinish: (msg) => { onMessageAppended(msg); },
+        onError: (err) => {
+          console.error('[sendTurn]', err);
+          // Surface the error so the user knows what happened. Don't swallow
+          // into console — a silent failure is the worst UX and forces a
+          // reload as the only recovery.
+          const msg = (err as Error)?.message || String(err);
+          window.dispatchEvent(new CustomEvent('chat:stream-error', { detail: { message: msg } }));
         }
-        // Always persist contentRaw = what the user typed (without extracted text),
-        // so the bubble can render just the draft + attachment chips.
-        const patch: Partial<import('$lib/chat/types').MessageRow> = { contentRaw: rawDraft };
-        if (ids.length > 0) patch.attachmentIds = ids;
-        await repo.updateMessage(userMsg.id, patch);
-      },
-      onFinish: (msg) => { onMessageAppended(msg); },
-      onError: (err) => { console.error('[sendTurn]', err); }
-    });
-
-    streaming = false; onStreamingChanged(false); ctrl = null;
+      });
+    } catch (err) {
+      // Defense-in-depth. sendTurn's own try/catch should make this
+      // unreachable, but an unhandled throw here would leave streaming=true
+      // stuck and block all future sends until reload.
+      console.error('[sendTurn] unhandled throw', err);
+      const msg = (err as Error)?.message || String(err);
+      window.dispatchEvent(new CustomEvent('chat:stream-error', { detail: { message: msg } }));
+    } finally {
+      streaming = false;
+      onStreamingChanged(false);
+      ctrl = null;
+    }
   }
 
   function stop() { ctrl?.abort(); }

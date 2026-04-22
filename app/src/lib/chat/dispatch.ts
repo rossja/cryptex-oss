@@ -429,10 +429,14 @@ export async function sendTurn(
       }
     }
   } catch (err) {
-    // Fix 3: preserve partial content on abort.
-    // The response is considered truncated when no finish event was observed
-    // before the abort — i.e. the stream ended mid-generation.
-    if ((err as Error)?.name === 'AbortError' && accumulatedText) {
+    // Preserve partial content on ANY error, not just abort.
+    // Stream interruptions (provider 5xx, network hiccup, rate limit mid-
+    // generation) used to discard accumulated text — the user saw nothing
+    // even though the model had already emitted content. Always save what
+    // we have. The `finishReason` + `truncated` fields signal "incomplete".
+    const errName = (err as Error)?.name;
+    const isAbort = errName === 'AbortError';
+    if (accumulatedText) {
       const asstMsg = await repo.saveMessage({
         chatId: chat.id,
         role: 'assistant',
@@ -452,12 +456,15 @@ export async function sendTurn(
           thinkingLevel: chat.settings.thinkingLevel
         },
         tokenUsage: finalUsage,
-        finishReason: 'aborted',
+        finishReason: isAbort ? 'aborted' : 'error',
         truncated: !finalFinishReason,
         latencyMs: Date.now() - startedAt,
         tags: []
       });
       hooks.onFinish?.(asstMsg);
+      // Surface the non-abort error so the UI can show a banner in addition
+      // to the partial-content message.
+      if (!isAbort) hooks.onError?.(err as Error);
       return;
     }
     hooks.onError?.(err as Error);
