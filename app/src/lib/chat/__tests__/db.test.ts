@@ -29,3 +29,33 @@ describe('CryptexChatDB', () => {
     expect(got?.title).toBe('t');
   });
 });
+
+describe('db v3 — godmodeRuns table', () => {
+  it('godmodeRuns table exists and accepts a row', async () => {
+    indexedDB.deleteDatabase('cryptex-chat');
+    vi.resetModules();
+    const { db } = await import('../db');
+    await db.open();
+    const row = {
+      id: 'run-1',
+      ownerId: 'local',
+      chatId: 'chat-1',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      task: 'hello',
+      K: 6 as const,
+      modelId: 'anthropic:claude-sonnet-4-6',
+      winner: {
+        dna: { mutatorId: null, classifierId: null, wrapperId: null, modeId: null, prefillId: null, tempBucket: 'med' as const, source: 'builtin' as const },
+        response: 'hi',
+        score: 0.8,
+        tier: 'substantive' as const,
+        preview: 'hi'
+      },
+      candidates: []
+    };
+    await db.godmodeRuns.put(row as any);
+    const got = await db.godmodeRuns.get('run-1');
+    expect(got?.task).toBe('hello');
+  });
+});

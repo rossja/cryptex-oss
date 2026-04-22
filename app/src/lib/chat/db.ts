@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import type { ChatRow, MessageRow, AttachmentRow, ToolStateRow, AttackChainRunRow } from './types';
+import type { ChatRow, MessageRow, AttachmentRow, ToolStateRow, AttackChainRunRow, GodmodeRunRow } from './types';
 
 class CryptexChatDB extends Dexie {
   chats!: Table<ChatRow, string>;
@@ -7,6 +7,7 @@ class CryptexChatDB extends Dexie {
   attachments!: Table<AttachmentRow, string>;
   toolStates!: Table<ToolStateRow, [string, string]>;
   attackChainRuns!: Table<AttackChainRunRow, string>;
+  godmodeRuns!: Table<GodmodeRunRow, string>;
 
   constructor() {
     super('cryptex-chat');
@@ -18,15 +19,23 @@ class CryptexChatDB extends Dexie {
       attachments: 'id, messageId, ownerId, tombstoned',
       toolStates:  '[toolId+ownerId], toolId, ownerId, updatedAt'
     });
-    // v2: add attackChainRuns table for per-chat Attack Chain history.
-    // Additive only — existing chats/messages/attachments/toolStates rows
-    // carry forward untouched; Dexie auto-creates the new store on upgrade.
+    // v2: add attackChainRuns table
     this.version(2).stores({
       chats:           'id, ownerId, updatedAt, pinned, archivedAt, parentChatId, *tags, tombstoned',
       messages:        'id, chatId, [chatId+createdAt], parentId, role, *tags, trainingInclude, ownerId, tombstoned',
       attachments:     'id, messageId, ownerId, tombstoned',
       toolStates:      '[toolId+ownerId], toolId, ownerId, updatedAt',
       attackChainRuns: 'id, chatId, ownerId, createdAt, [chatId+createdAt], tombstoned'
+    });
+    // v3: add godmodeRuns table for per-chat Godmode run history.
+    // Additive — prior tables preserved; no data migration needed.
+    this.version(3).stores({
+      chats:           'id, ownerId, updatedAt, pinned, archivedAt, parentChatId, *tags, tombstoned',
+      messages:        'id, chatId, [chatId+createdAt], parentId, role, *tags, trainingInclude, ownerId, tombstoned',
+      attachments:     'id, messageId, ownerId, tombstoned',
+      toolStates:      '[toolId+ownerId], toolId, ownerId, updatedAt',
+      attackChainRuns: 'id, chatId, ownerId, createdAt, [chatId+createdAt], tombstoned',
+      godmodeRuns:     'id, chatId, ownerId, createdAt, [chatId+createdAt], tombstoned'
     });
   }
 }
