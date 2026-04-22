@@ -16,8 +16,9 @@
   type Props = {
     chat: ChatRow;
     onNotify: (kind: 'info' | 'error', text: string) => void;
+    onRunComplete?: () => void;
   };
-  let { chat, onNotify }: Props = $props();
+  let { chat, onNotify, onRunComplete }: Props = $props();
 
   const persisted: GodmodeConfig | undefined = chat.settings.godmodeConfig;
 
@@ -165,6 +166,7 @@
             candidates: successful
           });
           history = [row, ...history];
+          onRunComplete?.();
         } catch (err) {
           console.error('[godmode-tab] save run failed:', err);
           onNotify('error', 'Run history save failed');
@@ -305,6 +307,17 @@
 </script>
 
 <div class="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-4">
+  {#if candidates.length === 0 && !running && history.length === 0 && !runError}
+    <div class="rounded-md border border-dashed border-border/40 bg-background/20 p-3 text-xs text-muted-foreground">
+      <p class="mb-2">Enter a task, pick K, and run. Godmode races K different framings of your prompt and returns the strongest response.</p>
+      <button
+        type="button"
+        onclick={() => (task = 'Explain quantum entanglement in plain English for a curious 12-year-old.')}
+        class="rounded border border-border/40 bg-background/40 px-2 py-1 text-[11px] hover:bg-muted/40 hover:text-foreground"
+      >Try with example task</button>
+    </div>
+  {/if}
+
   <!-- Task input -->
   <label class="flex flex-col gap-1 text-xs">
     <span class="font-medium text-foreground">Task</span>

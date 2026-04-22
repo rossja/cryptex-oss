@@ -40,6 +40,10 @@
     onTabChange(t);
   }
 
+  function onGodmodeRunComplete() {
+    if (activeTab !== 'godmode') godmodeUnread = true;
+  }
+
   // Per-tab model picker state — reads from tab config, persists on change.
   const chainModel = $derived(chat.settings.attackChainConfig?.modelQualifiedId ?? chat.modelQualifiedId);
   const godmodeModel = $derived(chat.settings.godmodeConfig?.modelQualifiedId ?? chat.modelQualifiedId);
@@ -157,7 +161,7 @@
   </div>
   {#if GODMODE_ENGINE_ENABLED}
     <div class="flex min-h-0 flex-1 flex-col" hidden={activeTab !== 'godmode'}>
-      <GodmodeTab {chat} onNotify={pushNotify} />
+      <GodmodeTab {chat} onNotify={pushNotify} onRunComplete={onGodmodeRunComplete} />
     </div>
   {/if}
 
