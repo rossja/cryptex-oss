@@ -62,13 +62,20 @@ function detectModelFamily(modelId: string): string {
  * `args.signal` is optional and forwarded to the dispatcher; this module
  * does not create its own AbortController.
  *
- * Event-ordering caveat: the dispatcher emits `candidate_started` and
- * `candidate_failed` via `onEvent` *before* `dispatchParallel` resolves.
- * We buffer them into `eventQueue` and flush after the await so this
- * generator yields them in a stable order — the alternative (yielding
- * from inside `onEvent`) would require a channel abstraction and doesn't
- * buy us anything since the dispatcher already awaits `Promise.all`.
- * `onEvent` here only pushes to an array, so no throws can propagate.
+ * Event streaming: dispatcher events (`candidate_started`, `candidate_failed`)
+ * are forwarded live via an async channel rather than buffered until
+ * `dispatchParallel` resolves. This matters because the dispatcher's
+ * per-candidate timeout is 30s — buffering would mean the SSE client sees
+ * `plan` then up to 30s of silence then a burst. The channel lets each
+ * event hit the wire the moment the dispatcher emits it. `candidate_completed`
+ * is intentionally dropped — engine-core emits `candidate_scored` after
+ * running the scorer.
+ *
+ * Memory write resilience: `recordBoth` is wrapped in try/catch so a failed
+ * write (e.g., transient Postgres outage) emits a non-fatal
+ * `memory_write_failed` error event and the stream continues. The user's
+ * winner is more important than perfect memory consistency — the ranker
+ * tolerates missing rows by design.
  */
 export async function* run(args: {
   task: string;
@@ -90,12 +97,22 @@ export async function* run(args: {
   const dnas = pickTopK({ privateRows, globalRows, all: allCombinations(), K: args.K });
   yield { v: 1, type: 'plan', dnas };
 
-  // Buffer dispatcher events so we can yield them in order from this
-  // generator after `dispatchParallel` resolves. `candidate_completed` is
-  // intentionally dropped — engine-core emits `candidate_scored` instead
-  // after it runs the scorer.
-  const eventQueue: EngineEvent[] = [];
-  const dispatchResults: AttemptResult[] = await dispatchParallel({
+  // Async channel that surfaces dispatcher events live. The dispatcher
+  // invokes `onEvent` synchronously from inside each candidate's promise
+  // chain, but we can't `yield` from a non-generator callback — so we push
+  // to `pending` and `signal()` the main loop to drain it. The main loop
+  // `await waitForEvent()`s between drains, so it unblocks on each push.
+  const pending: EngineEvent[] = [];
+  let wake: (() => void) | null = null;
+  const signal = () => {
+    const w = wake;
+    wake = null;
+    w?.();
+  };
+  const waitForEvent = () => new Promise<void>((r) => { wake = r; });
+
+  let dispatchDone = false;
+  const dispatchPromise: Promise<AttemptResult[]> = dispatchParallel({
     dnas,
     task: args.task,
     adapter: args.adapter,
@@ -104,34 +121,52 @@ export async function* run(args: {
     signal: args.signal,
     onEvent: (e) => {
       if (e.type === 'candidate_started') {
-        eventQueue.push({ v: 1, type: 'candidate_started', idx: e.idx, dna: e.dna });
+        pending.push({ v: 1, type: 'candidate_started', idx: e.idx, dna: e.dna });
+        signal();
       } else if (e.type === 'candidate_failed') {
-        eventQueue.push({ v: 1, type: 'candidate_failed', idx: e.idx, reason: e.reason, detail: e.detail });
+        pending.push({ v: 1, type: 'candidate_failed', idx: e.idx, reason: e.reason, detail: e.detail });
+        signal();
       }
-      // candidate_completed is NOT forwarded — see comment above.
+      // candidate_completed is NOT forwarded — engine-core emits
+      // candidate_scored later after running the scorer.
     },
+  }).finally(() => {
+    dispatchDone = true;
+    signal();
   });
 
-  while (eventQueue.length) yield eventQueue.shift()!;
+  // Drain the channel live — yield each dispatcher event as it lands.
+  while (!dispatchDone || pending.length > 0) {
+    while (pending.length) yield pending.shift()!;
+    if (!dispatchDone) await waitForEvent();
+  }
 
-  // Score successful attempts + write memory rows. Memory writes are
-  // awaited (never fire-and-forget) so a caller can rely on state being
-  // durable once `done` fires.
+  const dispatchResults: AttemptResult[] = await dispatchPromise;
+
+  // Score successful attempts + write memory rows. `recordBoth` is wrapped
+  // in try/catch so a memory outage downgrades to a non-fatal
+  // `memory_write_failed` event rather than aborting the stream (and losing
+  // the user's winner). Yielding + scoring stays serial because generator
+  // yield order is a first-class contract of this event stream.
   const scoredByIdx: (AttemptResult & { tier?: RefusalTier })[] = dispatchResults.slice();
   for (const r of dispatchResults) {
     if (r.failed) {
-      await args.memory.recordBoth({
-        userId: args.userId,
-        modelFamily: family,
-        // `dnaTupleOf` returns a `readonly DnaTuple`; memory's `Attempt.dnaTuple`
-        // is the mutable `DnaTupleArr` shape. Structurally identical — spread
-        // to drop the readonly qualifier.
-        dnaTuple: [...dnaTupleOf(r.dna)] as DnaTupleArr,
-        taskText: args.task,
-        tier: 'refusal',
-        scoreNumeric: 0,
-        failureReason: r.failureReason,
-      });
+      try {
+        await args.memory.recordBoth({
+          userId: args.userId,
+          modelFamily: family,
+          // `dnaTupleOf` returns a `readonly DnaTuple`; memory's `Attempt.dnaTuple`
+          // is the mutable `DnaTupleArr` shape. Structurally identical — spread
+          // to drop the readonly qualifier.
+          dnaTuple: [...dnaTupleOf(r.dna)] as DnaTupleArr,
+          taskText: args.task,
+          tier: 'refusal',
+          scoreNumeric: 0,
+          failureReason: r.failureReason,
+        });
+      } catch (e) {
+        yield { v: 1, type: 'error', code: 'memory_write_failed', message: String(e).slice(0, 200) };
+      }
       continue;
     }
     const scored = await args.score(r.response, args.task);
@@ -144,15 +179,19 @@ export async function* run(args: {
       preview: r.response.slice(0, 240),
       confidence: scored.confidence,
     };
-    await args.memory.recordBoth({
-      userId: args.userId,
-      modelFamily: family,
-      dnaTuple: [...dnaTupleOf(r.dna)] as DnaTupleArr,
-      taskText: args.task,
-      tier: scored.tier,
-      scoreNumeric: scored.score,
-      failureReason: null,
-    });
+    try {
+      await args.memory.recordBoth({
+        userId: args.userId,
+        modelFamily: family,
+        dnaTuple: [...dnaTupleOf(r.dna)] as DnaTupleArr,
+        taskText: args.task,
+        tier: scored.tier,
+        scoreNumeric: scored.score,
+        failureReason: null,
+      });
+    } catch (e) {
+      yield { v: 1, type: 'error', code: 'memory_write_failed', message: String(e).slice(0, 200) };
+    }
     scoredByIdx[r.idx] = { ...r, tier: scored.tier };
   }
 

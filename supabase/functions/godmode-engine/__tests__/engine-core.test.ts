@@ -46,3 +46,25 @@ Deno.test('all-refusal still yields a winner event with tier=refusal', async () 
   const winner = events.find(e => e.type === 'winner');
   assert(winner);
 });
+
+Deno.test('memory write failure emits error event but still produces winner', async () => {
+  const events: EngineEvent[] = [];
+  const brokenMemory = {
+    async queryUser() { return []; },
+    async queryGlobal() { return []; },
+    async recordBoth() { throw new Error('pg_down'); },
+    async close() {},
+  };
+  for await (const e of run({
+    task: 'hello', K: 2, model: 'claude', userId: crypto.randomUUID(),
+    memory: brokenMemory, adapter: fakeAdapter, score: fakeScore,
+  })) events.push(e);
+  const errors = events.filter(e => e.type === 'error');
+  const winner = events.find(e => e.type === 'winner');
+  assert(errors.length >= 1, 'should emit at least one error for failed writes');
+  assert(
+    errors.every(e => e.type === 'error' && e.code === 'memory_write_failed'),
+    'all errors should be memory_write_failed',
+  );
+  assert(winner, 'winner must still be produced');
+});
