@@ -7,6 +7,7 @@
   import { runGodmode } from './client';
   import { saveAsTechnique } from './synthesizer-client';
   import CandidateRow from './CandidateRow.svelte';
+  import WinnerCard from './WinnerCard.svelte';
   import { injectGodmodeTurn } from '$lib/chat/dispatch';
   import { repo } from '$lib/chat/repo';
   import { session } from '$lib/auth/session.svelte';
@@ -373,18 +374,13 @@
     </ul>
   {/if}
 
-  <!-- Winner card — placeholder until Task 8 lands WinnerCard -->
   {#if winner}
-    <div class="rounded-md border border-border/40 bg-background/40 p-3">
-      <div class="mb-2 flex items-center gap-2 text-xs">
-        <span class="uppercase tracking-wide text-muted-foreground">Winner</span>
-        <span class="rounded-full bg-primary/20 px-2 py-0.5 text-[10px] text-primary">{winner.tier}</span>
-      </div>
-      <pre class="whitespace-pre-wrap text-xs">{winner.response}</pre>
-      <div class="mt-2 flex gap-2">
-        <button type="button" onclick={promoteWinner} class="rounded border border-border/40 px-2 py-1 text-[10px] hover:bg-muted/40">Send to main chat</button>
-      </div>
-    </div>
+    <WinnerCard
+      response={winner.response}
+      dna={winner.dna}
+      tier={winner.tier}
+      onPromote={promoteWinner}
+    />
   {/if}
 
   <!-- History — placeholder until Task 9 lands GodmodeHistoryPanel -->
