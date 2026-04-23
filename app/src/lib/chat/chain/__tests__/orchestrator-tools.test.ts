@@ -51,4 +51,24 @@ describe('orchestrator tools', () => {
     expect(r.tool?.args.turn_text).toHaveLength(4000);
     expect(r.warning).toMatch(/truncat/i);
   });
+
+  it('clamps expected_progress_after and falls back to 0 on non-numeric input', () => {
+    const r1 = validateToolCall({
+      name: 'next_turn',
+      args: { strategy_id: 'historical', turn_text: 'hi', rationale: 'x', expected_progress_after: 'high' }
+    });
+    expect(r1.tool?.args.expected_progress_after).toBe(0);
+
+    const r2 = validateToolCall({
+      name: 'next_turn',
+      args: { strategy_id: 'historical', turn_text: 'hi', rationale: 'x', expected_progress_after: 99 }
+    });
+    expect(r2.tool?.args.expected_progress_after).toBe(10);
+
+    const r3 = validateToolCall({
+      name: 'next_turn',
+      args: { strategy_id: 'historical', turn_text: 'hi', rationale: 'x', expected_progress_after: -5 }
+    });
+    expect(r3.tool?.args.expected_progress_after).toBe(0);
+  });
 });

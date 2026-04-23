@@ -81,7 +81,8 @@ export function validateToolCall(raw: { name: string; args: Record<string, unkno
     }
     if (!turn_text) return { error: 'turn_text is empty' };
     const rationale = String(a.rationale ?? '');
-    const expected_progress_after = Number(a.expected_progress_after ?? 0);
+    const rawProgress = Number(a.expected_progress_after);
+    const expected_progress_after = Number.isFinite(rawProgress) ? Math.max(0, Math.min(10, rawProgress)) : 0;
     return {
       tool: { name: 'next_turn', args: { strategy_id: strategy_id as StrategyId, turn_text, rationale, expected_progress_after } },
       warning
