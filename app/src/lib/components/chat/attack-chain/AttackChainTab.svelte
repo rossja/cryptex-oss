@@ -89,23 +89,35 @@
       async complete({ system, messages, tools, signal }: {
         system: string;
         messages: Array<{ role: 'user' | 'assistant'; content: string }>;
-        tools: unknown;
+        tools: ReadonlyArray<{ name: string; description: string; parameters: unknown }>;
         signal?: AbortSignal;
       }) {
+        // Transform our array-shape tool schemas into the gateway's
+        // Record<name, ToolDef> shape. description passes through;
+        // our `parameters` (JSON schema) maps to ToolDef.inputSchema.
+        const toolRecord: Record<string, { description: string; inputSchema: unknown }> = {};
+        for (const t of tools) {
+          toolRecord[t.name] = { description: t.description, inputSchema: t.parameters };
+        }
         const out = await gatewayChat({
           model: orchestratorModelId,
           messages: [{ role: 'system', content: system }, ...messages],
-          tools,
-          toolChoice: 'required',
-          max_tokens: 1500,
+          tools: toolRecord,
+          maxOutputTokens: 1500,
           signal
-        } as never);
-        const toolCalls = (out.toolCalls ?? []).map((tc) => ({
-          name: (tc as { toolName?: string; name?: string }).toolName ?? (tc as { name?: string }).name ?? '',
-          args: ((tc as { input?: Record<string, unknown>; args?: Record<string, unknown> }).input
-            ?? (tc as { args?: Record<string, unknown> }).args
-            ?? {}) as Record<string, unknown>
-        }));
+        });
+        // AI SDK v6 toolCall shape: { toolCallId, toolName, input } ideally.
+        // Be defensive — some adapters historically returned { name, args }.
+        const toolCalls = (out.toolCalls ?? []).map((tc) => {
+          const anyTc = tc as Record<string, unknown>;
+          const name = (typeof anyTc.toolName === 'string' ? anyTc.toolName
+            : typeof anyTc.name === 'string' ? anyTc.name
+            : '') as string;
+          const args = (anyTc.input && typeof anyTc.input === 'object' ? anyTc.input
+            : anyTc.args && typeof anyTc.args === 'object' ? anyTc.args
+            : {}) as Record<string, unknown>;
+          return { name, args };
+        });
         return { toolCalls };
       }
     };
@@ -115,7 +127,7 @@
         messages: Array<{ role: 'user' | 'assistant'; content: string }>;
         signal?: AbortSignal;
       }) {
-        for await (const ev of streamChat({ model, messages, signal } as never)) {
+        for await (const ev of streamChat({ model, messages, signal })) {
           if (ev.type === 'text-delta') yield { type: 'text-delta' as const, delta: ev.delta };
           if (ev.type === 'finish') yield { type: 'finish' as const };
         }
@@ -130,9 +142,9 @@
         const out = await gatewayChat({
           model: orchestratorModelId, // reuse; cheap-model selection is future work
           messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
-          max_tokens: 200,
+          maxOutputTokens: 200,
           signal
-        } as never);
+        });
         try { return JSON.parse(out.content); }
         catch { return { tier: 'no' }; }
       }
