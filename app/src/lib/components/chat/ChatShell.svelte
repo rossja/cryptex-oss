@@ -77,12 +77,6 @@
       settings: { ...(chat.settings ?? {}), workspaceOpen: false }
     });
   }
-  function onWorkspaceTabChange(tab: 'chain' | 'godmode') {
-    if (!chat) return;
-    void repo.updateChat(chat.id, {
-      settings: { ...(chat.settings ?? {}), workspaceTab: tab }
-    });
-  }
 </script>
 
 <div
@@ -109,7 +103,6 @@
     <AttackWorkspaceSidebar
       {chat}
       activeTab={activeTool}
-      onTabChange={onWorkspaceTabChange}
       onClose={onWorkspaceClose}
       onResize={onWorkspaceResize}
       onInsertToComposer={(text: string) => {

@@ -19,13 +19,12 @@
   type Props = {
     chat: ChatRow;
     activeMode: string | null;
-    onModeChange: (id: string | null) => void;
     onMessageAppended: (msg: MessageRow) => void;
     onStreamingChanged: (streaming: boolean) => void;
     onTextDelta?: (delta: string) => void;
     onReasoningDelta?: (delta: string) => void;
   };
-  let { chat, activeMode, onModeChange, onMessageAppended, onStreamingChanged, onTextDelta, onReasoningDelta }: Props = $props();
+  let { chat, activeMode, onMessageAppended, onStreamingChanged, onTextDelta, onReasoningDelta }: Props = $props();
 
   let draft = $state('');
   let streaming = $state(false);

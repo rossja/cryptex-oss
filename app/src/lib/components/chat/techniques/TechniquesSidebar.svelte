@@ -3,6 +3,7 @@
   import { pushRecent } from '$lib/stores/techniqueRecents.svelte';
   import type { Technique, TechniqueCategory } from '$lib/chat/techniques/types';
   import type { ChatRow } from '$lib/chat/types';
+  import { repo } from '$lib/chat/repo';
   import TechniqueSearchInput from './TechniqueSearchInput.svelte';
   import TechniqueGroup from './TechniqueGroup.svelte';
   import TechniqueRecent from './TechniqueRecent.svelte';
@@ -11,6 +12,13 @@
 
   type Props = { chat?: ChatRow };
   let { chat }: Props = $props();
+
+  async function openAttackChain() {
+    if (!chat) return;
+    await repo.updateChat(chat.id, {
+      settings: { ...(chat.settings ?? {}), workspaceOpen: true, workspaceTab: 'chain' }
+    });
+  }
 
   let query = $state('');
   let searchInputRef = $state<HTMLInputElement | null>(null);
@@ -44,7 +52,7 @@
   {#if chat}
     <button
       type="button"
-      onclick={() => window.dispatchEvent(new CustomEvent('chat:open-workspace', { detail: { tab: 'chain' } }))}
+      onclick={openAttackChain}
       class="mb-3 flex w-full items-center justify-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs text-primary hover:bg-primary/20"
     >
       <Zap size={12} /> Attack Chain

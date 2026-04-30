@@ -16,40 +16,9 @@
 
   let streamingContent = $state('');
   let streamingReasoning = $state('');
-  let workspaceOpen = $state(chat.settings.workspaceOpen ?? false);
-  let workspaceTab = $state<'chain' | 'godmode'>(chat.settings.workspaceTab ?? 'chain');
-
-  // Keep local state synced with prop changes on navigation.
-  $effect(() => {
-    workspaceOpen = chat.settings.workspaceOpen ?? false;
-    workspaceTab = chat.settings.workspaceTab ?? 'chain';
-  });
 
   let activeMode = $state<string | null>(chat.settings.activeMode ?? null);
   $effect(() => { activeMode = chat.settings.activeMode ?? null; });
-
-  async function setActiveMode(id: string | null) {
-    activeMode = id;
-    try {
-      await repo.updateChat(chat.id, { settings: { ...chat.settings, activeMode: id } });
-    } catch (err) {
-      console.error('[mode] failed:', err);
-      alert('Mode update failed: ' + (err as Error).message);
-      activeMode = chat.settings.activeMode ?? null;
-    }
-  }
-
-  async function persistWorkspaceState(open: boolean, tab: 'chain' | 'godmode') {
-    try {
-      const fresh = await repo.getChat(chat.id);
-      const base = fresh?.settings ?? chat.settings;
-      await repo.updateChat(chat.id, {
-        settings: { ...base, workspaceOpen: open, workspaceTab: tab }
-      });
-    } catch (err) {
-      console.error('[workspace] persist failed:', err);
-    }
-  }
 
   async function refresh() { messages = await repo.listMessages(chat.id); }
   $effect(() => { refresh(); });
@@ -159,19 +128,6 @@
   }
 
   onMount(() => {
-    const handler = (e: Event) => {
-      const tab = (e as CustomEvent<{ tab?: 'chain' | 'godmode' }>).detail?.tab;
-      if (workspaceOpen && (!tab || tab === workspaceTab)) {
-        // Clicking the same button while open closes the drawer.
-        workspaceOpen = false;
-      } else {
-        workspaceOpen = true;
-        if (tab) workspaceTab = tab;
-      }
-      void persistWorkspaceState(workspaceOpen, workspaceTab);
-    };
-    window.addEventListener('chat:open-workspace', handler);
-
     const continueHandler = (e: Event) => {
       const id = (e as CustomEvent<{ messageId: string }>).detail?.messageId;
       if (typeof id === 'string') void handleContinueMessage(id);
@@ -185,7 +141,6 @@
     window.addEventListener('chat:stream-error', streamErrorHandler);
 
     return () => {
-      window.removeEventListener('chat:open-workspace', handler);
       window.removeEventListener('chat:continue-message', continueHandler);
       window.removeEventListener('chat:stream-error', streamErrorHandler);
     };
@@ -195,7 +150,7 @@
 
 <div class="flex h-full w-full min-h-0 overflow-hidden">
   <div class="fade-in flex h-full min-w-0 min-h-0 flex-1 flex-col gap-2 overflow-hidden">
-    <ChatHeader {chat} {workspaceOpen} {workspaceTab} />
+    <ChatHeader {chat} />
     <div class="px-3 pt-1"><NoProviderBanner context="chat" compact={true} /></div>
     {#if streamError}
       <div class="mx-3 mt-1 flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive" role="alert">
@@ -215,7 +170,6 @@
     <Composer
       {chat}
       {activeMode}
-      onModeChange={setActiveMode}
       {onMessageAppended}
       {onTextDelta}
       {onReasoningDelta}

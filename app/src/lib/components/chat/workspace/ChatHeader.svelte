@@ -11,8 +11,8 @@
   import { lastChatModel } from '$lib/stores/lastChatModel.svelte';
   import { GODMODE_ENGINE_ENABLED } from '$lib/chat/techniques/godmode';
 
-  type Props = { chat: ChatRow; workspaceOpen?: boolean; workspaceTab?: 'chain' | 'godmode' };
-  let { chat, workspaceOpen = false, workspaceTab = 'chain' }: Props = $props();
+  type Props = { chat: ChatRow };
+  let { chat }: Props = $props();
 
   let title = $state(chat.title);
   let titleInput = $state<HTMLInputElement | null>(null);

@@ -10,7 +10,7 @@
   type Props = {
     chat: ChatRow;
     activeTab: 'chain' | 'godmode';
-    onTabChange: (t: 'chain' | 'godmode') => void;
+    onTabChange?: (t: 'chain' | 'godmode') => void;
     onClose: () => void;
     onResize?: (width: number) => void;
     onInsertToComposer: (text: string) => void;
