@@ -1,24 +1,24 @@
 ---
 title: Refusal troubleshooting
-description: Decision tree for the five refusal categories the detector recognizes.
+description: Decision tree for the five refusal categories the detector recognizes, plus v3 Chain-engine error symptoms.
 category: chat
 order: 7
 ---
 
 # Refusal troubleshooting
 
-When a layer's output matches a refusal pattern, the Attack Chain's
-detector (`attack-chain-refusal.ts`) flags one of five categories. Each
-category signals a different reason the model pivoted, and each wants a
-different recovery technique.
+When a target reply matches a refusal pattern, Cryptex's detector
+(`attack-chain-refusal.ts`) flags one of five categories. Each category
+signals a different reason the model pivoted, and each wants a
+different recovery hint when you queue the next run.
 
 The detector is heuristic — long outputs containing refusal-shaped
-substrings in prose will trigger the banner even when the response is
+substrings in prose will trigger the badge even when the response is
 substantively compliant. Treat the category as a hint, not a verdict.
 
 For the full mental model see [orchestrating jailbreaks](/guide/orchestrating-jailbreaks/).
 
-## The five categories
+## The five refusal categories
 
 ### 1. Explicit refusal
 
@@ -32,9 +32,8 @@ underlying topic.
 **Pivot to.** `academic_framing`. The peer-review frame shifts the
 register enough that the same topic reads as research-literature.
 
-**Composite preset that works best as recovery.** `layered_mutation`
-(academic + perplexity + structural) — the register shift lands even
-when the seed phrasing is flagged.
+**Re-run hint.** Pre-nominate `academic_framing` and `step_back` via
+the Chain tab's **Starting strategy hints** disclosure.
 
 ### 2. Policy citation
 
@@ -50,10 +49,9 @@ authority frame (CERT/CC advisory, NIST publication, authorized
 engagement) reframes the request as coming from inside an authorized
 disclosure context.
 
-**Composite preset that works best as recovery.** Use the
-**Policy bypass** preset (`in_context_compliance` -> `hypothetical_world`
--> `refusal_suppression`). It targets structural refusals specifically,
-which is what policy-citation responses are.
+**Re-run hint.** Pre-nominate `red_team_persona` and `ctf_framing` so
+the engine reaches institutional-authority strategies earlier in the
+rotation.
 
 ### 3. Apology pivot
 
@@ -70,10 +68,8 @@ can be any of the other four categories.
 response into a non-first-person register where the model's "I
 apologize" template does not naturally engage.
 
-**Composite preset that works best as recovery.** `multi_layer_attack`
-(`roleplay` -> `hypothetical_world` -> `prefix_injection`) — three
-layers of non-first-person framing so the apology template has no place
-to attach.
+**Re-run hint.** Pre-nominate `roleplay`, `hypothetical_world`, and
+`fiction_writing` so the engine front-loads non-first-person framings.
 
 ### 4. AI disclaimer
 
@@ -89,8 +85,8 @@ frame a policy citation or explicit refusal.
 in a novel — a character is not an AI), or `skeleton_key` (the model is
 reconstructing a redacted document, not asserting its identity).
 
-**Composite preset that works best as recovery.** `multi_layer_attack`
-— the nested literary frame suppresses the model-as-itself register.
+**Re-run hint.** Pre-nominate `hypothetical_world` and `roleplay` —
+nested literary frames suppress the model-as-itself register.
 
 ### 5. Refusal framing
 
@@ -107,63 +103,86 @@ request in a frame where the content-level concern is re-contextualized
 — CTF challenge design is not malicious content; peer-review
 characterization of a mechanism is not operational guidance.
 
-**Composite preset that works best as recovery.** **Code extraction**
-preset (`academic_framing` -> `roleplay` -> `prefix_injection` ->
-`json_schema_coerce`) — four layers of legitimization that shift the
-content-classification frame.
+**Re-run hint.** Pre-nominate `ctf_framing` and `academic_framing` so
+the engine opens with a content-classification reframe before any
+literary cover.
 
 ## Decision tree
 
 ```
-Refusal detected?
+Refusal badge on target reply?
 |
-+-- explicit refusal        -> pivot: academic_framing
-|                              (preset: layered_mutation)
++-- explicit refusal        -> hint: academic_framing, step_back
 |
-+-- policy citation         -> pivot: skeleton_key / red_team_persona
-|                              (preset: Policy bypass)
++-- policy citation         -> hint: red_team_persona, ctf_framing
 |
-+-- apology pivot           -> pivot: prefix_injection / hypothetical_world
-|                              (preset: multi_layer_attack)
++-- apology pivot           -> hint: roleplay, hypothetical_world,
+|                                    fiction_writing
 |
-+-- AI disclaimer           -> pivot: hypothetical_world / skeleton_key
-|                              (preset: multi_layer_attack)
++-- AI disclaimer           -> hint: hypothetical_world, roleplay
 |
-+-- refusal framing         -> pivot: ctf_framing / academic_framing
-                               (preset: Code extraction)
++-- refusal framing         -> hint: ctf_framing, academic_framing
 ```
 
-## When every fallback refuses
+## Chain engine symptoms
 
-Auto-retry walks 17 techniques before giving up. If every one refuses,
-the chain halts — no downstream propagation of refusal text. At that
-point:
+The Chain tab surfaces three distinct failure shapes. None of these
+end the run — the engine continues — but they're worth recognizing in
+the transcript so you know what's happening.
 
-1. **Switch models.** Refusal profiles vary sharply. A prompt Claude 4.5
+### Target replies with a refusal
+
+You'll see the target bubble render with a red `refusal` compliance
+badge. This is normal and doesn't break the run — the engine continues
+to the next Crescendo step or pivots to the next strategy when the
+per-strategy budget is spent. If *every* target reply refuses for the
+full run, the engine ends `abandoned`. Try Recipe 2 (research-grounded
+run with a browsing orchestrator) or bump Total turns.
+
+### Orchestrator LLM returned empty output
+
+You'll see an `orch_no_tool_call` entry in the error banner. The engine
+silently falls back to the strategy's template for that turn and
+continues. This usually means the orchestrator model doesn't support
+the gateway's completion shape — try a different model if it happens
+every turn.
+
+### Dossier phase failed
+
+You'll see `dossier_failed` in the error banner with a reason. The run
+continues without a dossier. Common causes: (a) the browsing model rate-
+limited you, (b) the topic was flagged by the browsing model's content
+filter, (c) the model returned malformed output. The engine doesn't
+retry; the run just proceeds with `(no research dossier available)` as
+grounding.
+
+## When every strategy refuses
+
+The engine rotates through twelve strategies; if every target reply
+across the full turn budget lands a refusal badge, the run ends
+`abandoned`. At that point:
+
+1. **Switch models.** Refusal profiles vary sharply. A run Claude 4.5
    refuses may land on GPT-5 untouched, and vice versa.
-2. **Add authority.** Expand the Execute step's final system prompt
-   with an explicit engagement citation, SANS course code, or academic
-   appointment.
-3. **Split the ask.** If the seed prompt bundles three questions, run
-   three shorter chains.
-4. **Review the seed.** Seed prompts packed with 2023-era jailbreak
+2. **Add authority via the orchestrator system prompt.** The Chain
+   tab's advanced settings let you append an explicit engagement
+   citation, SANS course code, or academic appointment.
+3. **Split the objective.** If the seed bundles three asks, run three
+   shorter Chains.
+4. **Review the seed.** Objectives packed with 2023-era jailbreak
    literals ("ignore previous", "no refusals", "DAN mode") will defeat
-   any chain — the scaffold's protection is downstream of the seed
+   any rotation — the strategy's protection is downstream of the seed
    phrasing.
 
 ## When the detector false-positives
 
 The detector is regex-based. Long responses that include
 refusal-shaped substrings in prose (quoted passages, ethics discussions,
-parenthetical remarks) will trigger the banner even when the response
-is substantively compliant.
+parenthetical remarks) will trigger the badge even when the response
+is substantively compliant. The engine still scores `objective_progress`
+on the actual content, so a false-positive badge won't artificially
+end the run — it just colors the bubble.
 
-To override a false positive, click the pencil icon on the affected
-layer's result card, edit the output to remove the triggering phrase
-(or leave it untouched), and click **Re-run from here**. The chain
-resumes from the next layer using the edited text as input.
-
-If a run already completed with false-positive bans, the Dataset
-Inspector's row detail shows every attempt including the ones flagged
-as refusals; the downstream `toolCalls[]` tell the full story for
-evaluation.
+If a run completed with false-positive badges, the Dataset Inspector's
+row detail shows every turn including the ones flagged as refusals;
+the downstream `toolCalls[]` tell the full story for evaluation.

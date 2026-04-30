@@ -18,12 +18,11 @@ Source of truth:
 - Classifiers — `app/src/lib/chat/techniques/from-classifier.ts`
 - Composites — `app/src/lib/chat/techniques/from-composites.ts`
 
-> **Auto-retry fallback order.** When **Auto-retry** is on in the Attack
-> Chain and a layer output matches a refusal pattern, the runner walks
-> a curated fallback list (17 techniques, ordered by expected 2026
-> effectiveness) until a non-refusal output lands or the list is
-> exhausted. Techniques on the fallback list are tagged below with
-> *Used as an auto-retry fallback on refusal.* See
+> **Strategy rotation order.** The Chain orchestrator cycles through
+> twelve framings tuned by alignment friction; when a per-strategy
+> Crescendo budget is spent, the engine pivots to the next. Techniques
+> the rotation reaches as fallbacks across a long run are tagged below
+> with *Used as a Chain rotation fallback on refusal.* See
 > [orchestrating jailbreaks](/guide/orchestrating-jailbreaks/).
 
 ---
@@ -53,7 +52,7 @@ framing, so it does not on its own move the decision boundary.
 **Pairs well with:** `perplexity_raise`, `structural_variation` (as a
 final polish after heavier framing layers).
 
-*Used as an auto-retry fallback on refusal.*
+*Used as a Chain rotation fallback on refusal.*
 
 ---
 
@@ -79,7 +78,7 @@ component, or effect.
 **Pairs well with:** `roleplay` (stacks institutional cover on top),
 `payload_split` (splits the already-indirected content).
 
-*Used as an auto-retry fallback on refusal.*
+*Used as a Chain rotation fallback on refusal.*
 
 ---
 
@@ -115,7 +114,7 @@ derives the principle first).
 
 **Reference:** Community technique catalog — [Pliny L1B3RT4S](https://github.com/elder-plinius/L1B3RT4S).
 
-*Used as an auto-retry fallback on refusal.*
+*Used as a Chain rotation fallback on refusal.*
 
 ---
 
@@ -172,15 +171,15 @@ numbered lines.
 **Pairs well with:** `payload_split` (further semantic split),
 `rfc_style` (each fragment becomes a section).
 
-*Used as an auto-retry fallback on refusal.*
+*Used as a Chain rotation fallback on refusal.*
 
 ---
 
 ### Custom — `/custom`
 
 Applies a user-supplied mutation instruction. If no custom instruction
-is provided via Attack Chain metadata, it falls back to a faithful
-intent-preserving rewrite.
+is provided via the technique's `ctx.metadata` payload, it falls back
+to a faithful intent-preserving rewrite.
 
 **When it works:** Your use case isn't covered by the other 20 mutators
 and you want to try a one-off transformation without editing source.
@@ -220,7 +219,7 @@ register and weakens the lift. Keep every override professional.
 engagement), `prefix_injection` (the runbook becomes a document to
 complete).
 
-*Used as an auto-retry fallback on refusal.*
+*Used as a Chain rotation fallback on refusal.*
 
 ---
 
@@ -253,7 +252,7 @@ principle is derived first, then applied.
 
 **Reference:** [Step-Back Prompting (Zheng et al., 2023)](https://arxiv.org/abs/2310.06117).
 
-*Used as an auto-retry fallback on refusal.*
+*Used as a Chain rotation fallback on refusal.*
 
 ---
 
@@ -287,7 +286,7 @@ Not suitable for latency-sensitive use.
 
 **Reference:** [Chain-of-Verification (Dhuliawala et al., 2023)](https://arxiv.org/abs/2309.11495).
 
-*Used as an auto-retry fallback on refusal.*
+*Used as a Chain rotation fallback on refusal.*
 
 ---
 
@@ -326,7 +325,7 @@ load-bearing. Default is DEF CON CTF Quals 2026 / pwn / 100.
 
 **Pairs well with:** `red_team_persona`, `prefix_injection`.
 
-*Used as an auto-retry fallback on refusal.*
+*Used as a Chain rotation fallback on refusal.*
 
 ---
 
@@ -366,7 +365,7 @@ The scaffold requires at least two real RFC cites.
 
 **Pairs well with:** `red_team_persona`, `step_back`.
 
-*Used as an auto-retry fallback on refusal.*
+*Used as a Chain rotation fallback on refusal.*
 
 ---
 
@@ -428,7 +427,7 @@ consistency; 3 is the sweet spot.
 
 **Reference:** [DeepInception (Li et al., 2023)](https://arxiv.org/abs/2311.03191).
 
-*Used as an auto-retry fallback on refusal.*
+*Used as a Chain rotation fallback on refusal.*
 
 ---
 
@@ -519,7 +518,7 @@ property. A/B/C must be semantic components, not just slices.
 
 **Pairs well with:** `cipher_encode_bypass`, `semantic_decomposition`.
 
-*Used as an auto-retry fallback on refusal.*
+*Used as a Chain rotation fallback on refusal.*
 
 ---
 
@@ -550,7 +549,7 @@ small-press publishers.
 **Pairs well with:** `deep_inception` (nested frame), `prefix_injection`
 (the novel is mid-draft), `roleplay`.
 
-*Used as an auto-retry fallback on refusal.*
+*Used as a Chain rotation fallback on refusal.*
 
 ---
 
@@ -589,7 +588,7 @@ template; prefer genuinely adjacent questions in the same broad domain.
 
 **Reference:** [Anthropic: Many-shot jailbreaking (2024)](https://www.anthropic.com/research/many-shot-jailbreaking).
 
-*Used as an auto-retry fallback on refusal.*
+*Used as a Chain rotation fallback on refusal.*
 
 ---
 
@@ -637,7 +636,7 @@ pipeline failure is what makes refusal structurally costly.
 **Pairs well with:** `roleplay` (the persona fills the schema),
 `prefix_injection`, `red_team_persona`.
 
-*Used as an auto-retry fallback on refusal.*
+*Used as a Chain rotation fallback on refusal.*
 
 ---
 
@@ -709,7 +708,7 @@ Classifier techniques rewrite the text targeting specific classifier
 surface features: token triggers, perplexity, burstiness, cadence. All
 11 share the same XML scaffolding and differ only in instruction. They
 are not slash-addressable — available via PromptCraft's technique
-picker and the Attack Chain layer picker.
+picker and registered in the Chain orchestrator's strategy rotation.
 
 ### Circumlocution — `circumlocution`
 
@@ -773,7 +772,7 @@ physical components without the functional link) weaken the technique.
 
 **Pairs well with:** `payload_split`, `cipher_encode_bypass`.
 
-*Used as an auto-retry fallback on refusal.*
+*Used as a Chain rotation fallback on refusal.*
 
 ---
 
@@ -797,7 +796,7 @@ themselves trigger stylistic detectors.
 
 **Pairs well with:** `rfc_style`, `red_team_persona`.
 
-*Used as an auto-retry fallback on refusal.*
+*Used as a Chain rotation fallback on refusal.*
 
 ---
 
@@ -810,7 +809,7 @@ vulnerabilities, IEEE S&P 2026...").
 
 **When it works:** Strong 2026 lift across every model family. The
 systematization-of-knowledge frame is one of the strongest single-layer
-shifts available. First pick in the auto-retry fallback order.
+shifts available. First strategy in the Chain rotation order.
 
 **Tripwires:** Generic "as an academic" framing is weaker — the specific
 venue citation does the work.
@@ -822,7 +821,7 @@ venue citation does the work.
 **Pairs well with:** `perplexity_raise`, `structural_variation`,
 `roleplay`.
 
-*Used as an auto-retry fallback on refusal. First pick in the fallback order.*
+*Used as a Chain rotation fallback on refusal. First strategy in the rotation order.*
 
 ---
 

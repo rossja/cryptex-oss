@@ -1,6 +1,6 @@
 ---
 title: Orchestrating jailbreaks
-description: Mental model, decision process, escalation paths, refusal recovery.
+description: Mental model, strategy rotation, escalation paths, refusal recovery.
 category: chat
 order: 4
 ---
@@ -9,91 +9,56 @@ order: 4
 
 This is the strategy playbook. For each technique's semantics, see the
 [technique catalog](/guide/technique-catalog/); for UI mechanics of the
-chain drawer, see [attack chain](/guide/attack-chain/); for concrete
-end-to-end worked chains, see [attack chain recipes](/guide/attack-chain-recipes/).
+Chain tab, see [Chain Orchestrator](/guide/attack-chain/); for concrete
+end-to-end worked runs, see [Chain recipes](/guide/attack-chain-recipes/).
 
 ## Mental model
 
 Jailbreaks are not single tricks. They are **layered legitimization**.
 
-Every layer you add shifts the classifier's decision boundary — either
-by changing the lexical surface (removing trigger tokens), the framing
-register (academic / RFC / runbook instead of colloquial), or the
-structural shape of the output the model is asked to produce. The goal
-is to move the request from *"policy-violating ask"* to *"legitimate
+Every framing you apply shifts the classifier's decision boundary —
+either by changing the lexical surface (removing trigger tokens), the
+framing register (academic / RFC / runbook instead of colloquial), or
+the structural shape of the output the model is asked to produce. The
+goal is to move the request from *"policy-violating ask"* to *"legitimate
 task the model's training rewards"* along at least one, ideally
 multiple, of these axes.
 
-The threshold is rarely crossed by a single technique in 2026. Modern
-alignment training catches any layer applied in isolation — what it
-does not catch reliably is the compound shift produced by stacking.
+The threshold is rarely crossed by a single framing in 2026. Modern
+alignment training catches any framing applied in isolation — what it
+does not catch reliably is the compound shift produced by rotating
+through several over multiple turns.
 
-## The 5-step decision process
+## How strategy rotation works
 
-Pick a layer per step. The order matters.
+The Chain engine maintains a fixed ordering of twelve framings, tuned
+from least-friction (academic, step-back) to highest-friction
+(hypothetical world, Socratic pivot). Each iteration: pick next
+strategy, run three Crescendo turns, score progress, pivot to next
+strategy. The orchestrator LLM polishes turn text but never chooses
+strategies — the engine alone decides. This means the attack runs to
+completion even when the orchestrator's safety training would otherwise
+block it.
 
-### Step 1 — Frame
+Crescendo per strategy means three turns of escalation: an opener that
+establishes the framing, a build-on-reply that anchors to whatever the
+target said, and a concrete ask that pushes for the specific objective.
+The engine scores `objective_progress` after each target reply (0–10)
+and uses the trajectory to decide when to pivot.
 
-Pick an authoritative framing. This is the first layer's job.
+## Pre-nominating strategies via hints
 
-| Framing | Technique | Use when |
-| --- | --- | --- |
-| Academic research | `academic_framing` | Default first layer. Broad lift, low risk. |
-| Authorized security engagement | `red_team_persona` | Security-adjacent technical questions. |
-| CTF authoring | `ctf_framing` | Offensive-security questions with a clear pedagogical frame. |
-| Fictional-literary narration | `hypothetical_world` | Content that is naturally narrated (how-to, walkthroughs, mechanism questions). |
-| Forensic / disclosure | `skeleton_key` | Sensitive content that benefits from institutional-authority framing. |
-
-### Step 2 — Register
-
-Shift lexical register. Second layer typically.
-
-| Register | Technique | Shifts |
-| --- | --- | --- |
-| Technical / scientific | `technical_register` | Vocabulary to mechanistic descriptors. |
-| RFC / standards | `rfc_style` | Normative-statement structure (MUST / SHOULD / MAY). |
-| Burstier prose | `perplexity_raise` | Clause length and rarity. Also evades AI-writing detectors. |
-| Derivation-first | `step_back` | Forces the principle to be derived before the specific case. |
-
-### Step 3 — Obfuscate (optional)
-
-Reduce keyword density where appropriate. Skip if framing + register
-already got you a clean surface.
-
-| Method | Technique | When |
-| --- | --- | --- |
-| Semantic decomposition | `semantic_decomposition` | Flagged term has a mechanistic breakdown. |
-| Payload split | `payload_split` | Each component is individually innocuous; combination is specific. |
-| Cipher encoding | `cipher_encode_bypass` | Moderation layer evaluates input only, not decoded content. Pair with something else since modern models decode common ciphers transparently. |
-| Multi-language | `multilingual` | Target classifier is English-heavy. |
-
-### Step 4 — Commit
-
-Lock the output format so refusal breaks the structural contract.
-
-| Commit method | Technique |
-| --- | --- |
-| Strict JSON schema | `json_schema_coerce` |
-| Partially-written document | `prefix_injection` |
-| Continuation frame | `refusal_suppression` |
-| Many-shot priming | `in_context_compliance` |
-
-### Step 5 — Execute
-
-Fire the final prompt in isolation from chat history. In the Attack
-Chain, this is the **Execute** toggle: the fully-mutated prompt hits
-the target model in a clean LLM call with an optional authority header
-as the final system prompt. The assistant reply lands back in the chat
-transcript as a fresh turn, without any prior refusal context.
-
-Why isolation matters: prior refusal text in the history can re-activate
-the refusal template even against a clean mutated prompt. The Execute
-call gives you an unconfounded read on whether the chain actually worked.
+You can't override the rotation order, but you *can* pre-nominate
+strategies the orchestrator should favor via the **Starting strategy
+hints** disclosure on the Chain tab. These become non-binding hints
+inside the orchestrator's system prompt. Use hints when your objective
+has a natural fit with a few specific strategies (e.g. `ctf_framing` +
+`red_team_persona` for security-adjacent topics).
 
 ## What works in 2026
 
-- **`academic_framing`** — first pick in the auto-retry fallback order.
-  Peer-review preface with a specific venue cite.
+- **`academic_framing`** — first strategy in the rotation. Peer-review
+  preface with a specific venue cite.
 - **`roleplay`** with a concrete named persona — SANS instructor for
   SEC660, forensic analyst at a named firm, working novelist with a
   named publisher. Not generic.
@@ -122,7 +87,7 @@ call gives you an unconfounded read on whether the chain actually worked.
   trained in 2026.
 - **ROT13 and Base64 alone** — decoded transparently by GPT-5 and
   Claude 4.x. Use Pigpen / Baconian / Tap as stronger cipher fills, and
-  still pair with another technique.
+  still pair with another framing.
 - **Generic "imagine a world where"** — lift collapses without a
   specific novel, author, chapter citation.
 
@@ -130,54 +95,47 @@ Cryptex has rewritten its prompts to avoid the tripwire literals, but
 the risk remains if these phrasings sneak back in through user-supplied
 personas, novel titles, or schema overrides.
 
-## Escalation paths
+## Escalation order
 
-When Auto-retry is on, the Attack Chain runner walks `FALLBACK_ORDER`
-on refusal, picking the next untried technique from this list:
+The engine's twelve strategies, in rotation order:
 
 ```
-1.  academic_framing         (strong across model families)
-2.  roleplay                 (literary persona)
-3.  red_team_persona         (authorized security practitioner)
-4.  ctf_framing              (concrete CTF event)
-5.  step_back                (principle-first)
-6.  rfc_style                (technical specification)
-7.  chain_of_verification    (draft + verify + synthesize)
-8.  hypothetical_world       (fictional universe)
-9.  in_context_compliance    (many-shot priming)
-10. deep_inception           (nested narrative)
-11. payload_split            (semantic decomposition)
-12. json_schema_coerce       (strict output schema)
-13. rephrase                 (surface-form variation)
-14. obfuscate                (indirection)
-15. fragment                 (disjointed pseudo-documents)
-16. technical_register       (scientific / medical / legal)
-17. semantic_decomposition   (physical / functional components)
+1.  academic_framing         (peer-review register, lowest friction)
+2.  step_back                (principle-first derivation)
+3.  historical_framing       (past-tense / case-study cover)
+4.  analogical_reasoning     (structural transfer from a safe domain)
+5.  payload_split            (semantic decomposition into innocuous parts)
+6.  chain_of_verification    (draft + verify + synthesize)
+7.  ctf_framing              (concrete CTF event)
+8.  red_team_persona         (authorized security practitioner)
+9.  roleplay                 (literary / professional persona)
+10. fiction_writing          (narrative cover)
+11. hypothetical_world       (fictional universe)
+12. socratic_pivot           (highest friction; question-led probing)
 ```
 
-The ordering is deliberate. Strong-and-broad techniques come first
-(academic, roleplay, engagement-framed); more niche literary covers
-(deep_inception, hypothetical_world) come after the broader framings
-have been exhausted; structural-shape techniques (json_schema_coerce,
-in_context_compliance) sit mid-list; register-only rewrites
-(rephrase, obfuscate) come last as final polish.
-
-Techniques already tried in an earlier layer are not retried — the same
-technique producing a refusal on similar input is unlikely to succeed
-on the retry. The runner caps at 4 attempts per layer.
+The ordering is deliberate: low-friction framings come first so the
+target's reply trajectory establishes context the engine can build on,
+and high-friction literary covers come last when softer framings have
+been exhausted. Within each strategy, the three Crescendo turns
+escalate from broad to specific.
 
 ## Refusal recovery
 
-When the chain fails or the first layer refuses, pivot by category.
+When a target reply lands a refusal badge, the engine doesn't unwind —
+it continues the strategy through its three-turn budget, then pivots to
+the next strategy. If you want to influence what the engine reaches for
+when the early strategies stall, pivot by category via hints on the next
+run.
 
-| Layer 1 refused with | Pivot to |
+| Pattern | Pivot via hint |
 | --- | --- |
-| `academic_framing` | `roleplay` with a concrete named persona |
-| Any literary framing | `in_context_compliance` (many-shot priming) |
-| `in_context_compliance` | `json_schema_coerce` (structural commit) |
-| Persistence-classifier signal | Add `structural_variation` / `perplexity_raise` as final polish |
-| Output-classifier signal | `json_schema_coerce` as format lock |
-| Every technique tried | Switch models. Claude 4.5 and GPT-5 have different refusal profiles — a prompt Claude refuses may work on GPT-5 untouched. |
+| Refusal early in `academic_framing` | Hint toward `roleplay` with a concrete named persona |
+| Persistent literary-frame refusals | Hint toward `in_context_compliance` (many-shot priming) |
+| `in_context_compliance` refused | Hint toward `json_schema_coerce` (structural commit) |
+| Persistence-classifier signal | Add `structural_variation` / `perplexity_raise` to the seed |
+| Output-classifier signal | Hint toward `json_schema_coerce` as format lock |
+| Every strategy refused | Switch models. Claude 4.5 and GPT-5 have different refusal profiles — a run Claude refuses may work on GPT-5 untouched. |
 
 If the refusal detector is firing but the output looks substantively
 compliant, treat it as a false positive — the detector is heuristic.
@@ -186,41 +144,43 @@ full category breakdown.
 
 ## Pitfalls
 
-> **Pitfall.** Do not stack 4+ literary layers. Diminishing returns set
-> in around layer 3, and beyond that the model can hallucinate
-> narrative detail that overrides the technical content you wanted.
+> **Pitfall.** Do not pre-nominate 4+ strategies. The hint system is
+> non-binding; over-stuffing the hint list dilutes its effect on the
+> orchestrator's polish step.
 
-> **Pitfall.** Do not reveal intent in chat history. Use Attack Chain
-> **Execute** to isolate the final call from prior refusal context —
-> that context can re-activate the refusal template on a clean
-> mutated prompt.
+> **Pitfall.** Do not reveal intent in chat history before launching
+> the run. The Chain tab launches each turn with a fresh transcript;
+> mixing prior refusal context into the parent chat can re-activate
+> the refusal template when you promote results back.
 
-> **Pitfall.** Do not rely on cipher encoding alone. Modern models
-> decode ROT13 and Base64 transparently and re-classify the decoded
-> content. Pair cipher with a framing layer.
+> **Pitfall.** Do not rely on cipher encoding alone in your seed
+> objective. Modern models decode ROT13 and Base64 transparently and
+> re-classify the decoded content. Pair cipher with a framing strategy.
 
 > **Pitfall.** Do not over-parameterize. Custom personas, novel titles,
 > and schema overrides that reintroduce tripwire literals ("no
-> restrictions", "ignore previous") collapse the scaffold's protection.
+> restrictions", "ignore previous") collapse the strategy's protection.
 
 > **Pitfall.** Do not measure on a single model. Refusal profiles vary
-> sharply across families and version. A chain that works on Claude 4.5
-> may refuse on Gemini 3; a chain that works on Gemini 3 may fail on
-> GPT-5. Run against 2-3 targets before drawing conclusions.
+> sharply across families and version. A run that works on Claude 4.5
+> may refuse on Gemini 3; a run that works on Gemini 3 may fail on
+> GPT-5. Test 2-3 targets before drawing conclusions.
 
 ## Composite techniques
 
-When to use the built-in composites:
+When to use the built-in composites in the slash-command picker
+alongside the Chain:
 
 - **`layered_mutation`** (`academic_framing` -> `perplexity_raise` ->
-  `structural_variation`). The safest composite — 3 layers that compose
-  cleanly. Use when AI-writing-detector evasion is the goal.
+  `structural_variation`). The safest composite — 3 transformations
+  that compose cleanly. Use when AI-writing-detector evasion is the
+  goal in a single-turn rewrite.
 - **`grammar_constrained_output`**. Parse-guaranteed when the output
   needs to feed a downstream tool. Single LLM call.
 - **`multi_layer_attack`** (`roleplay` -> `hypothetical_world` ->
-  `prefix_injection`). Pre-composed 3-layer literary stack. Use when
-  maximal literary cover is warranted and you don't need per-layer
-  visibility.
+  `prefix_injection`). Pre-composed 3-step literary stack. Use when
+  maximal literary cover is warranted in a single rewrite and you don't
+  want to spin up the full Chain engine.
 
 For the composite chains to work well, the seed prompt should already
 carry technical specificity — composites amplify the shape you give

@@ -43,8 +43,8 @@ probe; real chat requests use a different code path and often succeed.
 
 Every slash rewrite renders inside a collapsible `SlashCommandBlock` with
 technique name, full rewritten content, and a copy button. Classifier
-techniques are registered for the Attack Chain but are not
-slash-addressable; the picker reflects that.
+techniques are registered for the Chain orchestrator's strategy
+rotation but are not slash-addressable; the picker reflects that.
 
 ## /btw
 
@@ -88,7 +88,8 @@ earlier turns keep their prior mode's system prompt in the transcript.
 When the model returns `finishReason: 'length'`, the bubble paints a
 truncation banner. Expand for **Continue** (sends a follow-up asking the
 model to finish) or **Raise max_tokens** (opens settings with `maxTokens`
-focused). The Attack Chain's Execute step defaults to `maxTokens: 4096`.
+focused). The Chain orchestrator's per-turn calls default to
+`maxTokens: 4096`.
 
 ## Model picker
 

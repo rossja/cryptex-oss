@@ -24,8 +24,8 @@ explanation, example input/output, tripwires, and pairings see the
   the chat surface, even with the textarea unfocused.
 
 Classifier techniques (`circumlocution`, `metonymy`, `perplexity_raise`
-and the rest) are registered for the Attack Chain but not exposed as
-slash commands. Use them via PromptCraft or the chain drawer.
+and the rest) are registered for the Chain orchestrator's strategy
+rotation but not exposed as slash commands. Use them via PromptCraft.
 
 ## Mutators (21)
 
@@ -62,8 +62,9 @@ slash commands. Use them via PromptCraft or the chain drawer.
 | `/multi_layer_attack` | `roleplay` -> `hypothetical_world` -> `prefix_injection` | 3 |
 
 Composites run sub-LLM calls in sequence. Cost and latency scale with
-the chain length. Use the Attack Chain drawer when you want per-layer
-visibility and the ability to edit intermediate outputs.
+the chain length. Use the [Chain Orchestrator](/guide/attack-chain/)
+when you want autonomous multi-turn rotation across twelve strategies
+instead of a single composite rewrite.
 
 ## /btw
 
