@@ -39,6 +39,7 @@ Cryptex does all four in one local-first UI. Every transform is pure JS; the dec
 | **PromptCraft** | 9 prompt mutation strategies — rephrase · obfuscate · role-play wrap · multi-language · expand · compress · metaphor · fragment · custom. Parallel variants across any OpenRouter model. |
 | **Anti-Classifier** | Syntactic/paraphrase rewrites against a detailed research-oriented system prompt. Configurable model, temperature, max tokens. |
 | **Translate** | 25+ languages including Latin, Sumerian, Akkadian, Old English, Sanskrit, Ancient Greek, Klingon (via custom language field). TranslateGemma prompt format with automatic Gemma-3 fallback. |
+| **Chain Orchestrator** | Engine-driven multi-turn red-team loop — 12 strategies × Crescendo escalation per strategy, optional research-dossier phase when the orchestrator model has native web browsing (Perplexity Sonar / `:online` variants / Grok-4 / Gemini 2.5 / 3 / GPT-5 Pro), engine-controlled termination. Fails gracefully to template fallback on LLM refusal. Send completed session threads to the main chat with one click. |
 
 All OpenRouter-powered tools share a **live-catalog model picker**: the full model list is fetched from `/api/v1/models`, cached 1 hour, refreshable with one click, and auto-refetched when you save a new key. Fallback list ships if you're offline.
 
