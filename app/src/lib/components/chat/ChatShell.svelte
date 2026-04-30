@@ -66,10 +66,11 @@
     window.addEventListener('pointerup', end);
   }
 
-  // NOTE: Task 3 will add an `onResize(width)` callback to AttackWorkspaceSidebar's
-  // Props type and forward to a ChatShell-owned setter. Until then, the sidebar
-  // owns its own width state internally and persists via chat.settings.workspaceWidth,
-  // which `rightWidth` reads on the next chat.settings change.
+  // Sidebar emits onResize on each move so the shell can mirror live width
+  // into grid-template-columns. Persistence still lives inside the sidebar.
+  function onWorkspaceResize(width: number) {
+    rightWidth = width;
+  }
   function onWorkspaceClose() {
     if (!chat) return;
     void repo.updateChat(chat.id, {
@@ -110,6 +111,7 @@
       activeTab={activeTool}
       onTabChange={onWorkspaceTabChange}
       onClose={onWorkspaceClose}
+      onResize={onWorkspaceResize}
       onInsertToComposer={(text: string) => {
         // Forward to the active page's composer via a window event.
         // Using the existing `composer:insert` channel that Composer.svelte already listens on.

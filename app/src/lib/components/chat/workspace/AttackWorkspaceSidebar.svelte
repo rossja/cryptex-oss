@@ -3,22 +3,26 @@
   import { repo } from '$lib/chat/repo';
   import AttackChainTab from '$lib/components/chat/attack-chain/AttackChainTab.svelte';
   import GodmodeTab from '$lib/chat/godmode/GodmodeTab.svelte';
-  import ModelPickerV2 from '$lib/components/ai/ModelPickerV2.svelte';
-  import { GODMODE_ENGINE_ENABLED } from '$lib/chat/techniques/godmode';
-  import Zap from 'lucide-svelte/icons/zap';
-  import Sparkles from 'lucide-svelte/icons/sparkles';
+  import AttackHistoryDisclosure from './AttackHistoryDisclosure.svelte';
   import X from 'lucide-svelte/icons/x';
+  import GripVertical from 'lucide-svelte/icons/grip-vertical';
 
   type Props = {
     chat: ChatRow;
     activeTab: 'chain' | 'godmode';
     onTabChange: (t: 'chain' | 'godmode') => void;
     onClose: () => void;
+    onResize?: (width: number) => void;
     onInsertToComposer: (text: string) => void;
   };
-  let { chat, activeTab, onTabChange, onClose, onInsertToComposer }: Props = $props();
+  let { chat, activeTab, onClose, onResize, onInsertToComposer }: Props = $props();
+
+  // Title label for the hybrid header.
+  const toolLabel = $derived(activeTab === 'chain' ? 'Chain' : 'Godmode');
 
   // Inline notify state — swapped for a toast library later if usage warrants.
+  // Required to satisfy GodmodeTab's onNotify contract; surfaced as a tiny
+  // bottom toast inside the tile.
   let notify = $state<{ kind: 'info' | 'error'; text: string } | null>(null);
   let notifyTimer: ReturnType<typeof setTimeout> | null = null;
   function pushNotify(kind: 'info' | 'error', text: string) {
@@ -27,29 +31,17 @@
     notifyTimer = setTimeout(() => (notify = null), 2500);
   }
 
-  // Per-tab unread dot — flips to true when a run completes on the inactive tab.
-  // Resets when the user switches to that tab. In MVP we wire only the Godmode
-  // signal (a 'winner' event arriving while chain is active); Chain emits no
-  // such signal today and the dot stays off for Chain.
-  let chainUnread = $state(false);
-  let godmodeUnread = $state(false);
-
-  function selectTab(t: 'chain' | 'godmode') {
-    if (t === 'chain') chainUnread = false;
-    else godmodeUnread = false;
-    onTabChange(t);
-  }
-
-  function onGodmodeRunComplete() {
-    if (activeTab !== 'godmode') godmodeUnread = true;
-  }
-
-  // ---- Resize handle ---------------------------------------------------
+  // ---- Resize handle (left edge of this tile) -------------------------
   const MIN_WIDTH = 320;
   const MAX_WIDTH = 800;
   const DEFAULT_WIDTH = 440;
-  let width = $state<number>(chat.settings.workspaceWidth ?? DEFAULT_WIDTH);
-  $effect(() => { width = chat.settings.workspaceWidth ?? DEFAULT_WIDTH; });
+  let width = $state<number>(
+    chat.settings?.rightSidebarWidth ?? chat.settings?.workspaceWidth ?? DEFAULT_WIDTH
+  );
+  $effect(() => {
+    width =
+      chat.settings?.rightSidebarWidth ?? chat.settings?.workspaceWidth ?? DEFAULT_WIDTH;
+  });
 
   let dragging = $state(false);
   let dragStartX = 0;
@@ -68,168 +60,64 @@
   }
   function onResizeMove(e: PointerEvent) {
     if (!dragging) return;
-    // Aside is on the right; dragging left grows it.
+    // Tile is on the right; dragging left grows it.
     const next = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, dragStartWidth + (dragStartX - e.clientX)));
     width = next;
+    onResize?.(next);
   }
   function onResizeEnd() {
     dragging = false;
     document.body.style.cursor = '';
     document.body.style.userSelect = '';
     window.removeEventListener('pointermove', onResizeMove);
-    // Debounce persist — drag emits many moves per second; write once on release.
     if (persistTimer) clearTimeout(persistTimer);
-    persistTimer = setTimeout(() => { void persistWidth(width); }, 100);
-  }
-  async function persistWidth(px: number) {
-    try {
-      const fresh = await repo.getChat(chat.id);
-      const base = fresh?.settings ?? chat.settings;
-      await repo.updateChat(chat.id, { settings: { ...base, workspaceWidth: px } });
-    } catch (err) {
-      console.error('[workspace] persist width failed:', err);
-    }
-  }
-  // Double-click the handle to reset to default.
-  function onResizeDoubleClick() {
-    width = DEFAULT_WIDTH;
-    void persistWidth(DEFAULT_WIDTH);
-  }
-
-  // Per-tab model picker state — reads from tab config, persists on change.
-  const chainModel = $derived(chat.settings.attackChainConfig?.modelQualifiedId ?? chat.modelQualifiedId);
-  const godmodeModel = $derived(chat.settings.godmodeConfig?.modelQualifiedId ?? chat.modelQualifiedId);
-
-  async function onChainModelChange(v: string) {
-    try {
-      const fresh = await repo.getChat(chat.id);
-      const base = fresh?.settings ?? chat.settings;
-      await repo.updateChat(chat.id, {
-        settings: {
-          ...base,
-          attackChainConfig: {
-            input: '',
-            layers: ['', ''],
-            layerParams: [{}, {}],
-            layerOutputEdits: [null, null],
-            executeEnabled: true,
-            finalSystemPrompt: '',
-            autoRetryEnabled: true,
-            ...(base.attackChainConfig ?? {}),
-            modelQualifiedId: v
-          }
-        }
+    const id = chat.id;
+    const w = width;
+    persistTimer = setTimeout(() => {
+      void repo.updateChat(id, {
+        settings: { ...(chat.settings ?? {}), rightSidebarWidth: w }
       });
-    } catch (err) {
-      console.error('[workspace] chain model persist failed:', err);
-    }
-  }
-
-  async function onGodmodeModelChange(v: string) {
-    try {
-      const fresh = await repo.getChat(chat.id);
-      const base = fresh?.settings ?? chat.settings;
-      await repo.updateChat(chat.id, {
-        settings: {
-          ...base,
-          godmodeConfig: {
-            task: '',
-            K: 6,
-            saveForm: { expanded: false, name: '', decompose: false },
-            ...(base.godmodeConfig ?? {}),
-            modelQualifiedId: v
-          }
-        }
-      });
-    } catch (err) {
-      console.error('[workspace] godmode model persist failed:', err);
-    }
+    }, 250);
   }
 </script>
 
 <aside
-  class="relative flex h-full shrink-0 flex-col border-l border-border/50 bg-card/30 backdrop-blur-sm"
-  style:width="{width}px"
-  aria-label="Attack workspace"
+  class="relative glass rounded-lg border border-border/50 overflow-hidden flex flex-col"
+  style:width="100%"
 >
-  <!-- Drag handle on the left edge. Grabbing + dragging left grows the
-       sidebar, right shrinks it. Double-click resets to default width.
-       Highlights on hover + while active. -->
-  <div
-    role="separator"
-    aria-orientation="vertical"
-    aria-label="Resize workspace — drag to resize, double-click to reset"
-    title="Drag to resize · Double-click to reset"
+  <!-- Drag handle on left edge -->
+  <button
+    type="button"
+    aria-label="Resize attack workspace"
     onpointerdown={onResizeStart}
-    ondblclick={onResizeDoubleClick}
-    class="absolute inset-y-0 left-0 z-20 w-1.5 -translate-x-1/2 cursor-col-resize hover:bg-primary/40 {dragging ? 'bg-primary/60' : ''} transition-colors"
-  ></div>
-  <!-- Sticky header — tab strip + close -->
-  <div class="sticky top-0 z-10 flex shrink-0 flex-col gap-2 border-b border-border/50 bg-card/80 px-3 py-2">
-    <div class="flex items-center gap-1">
-      <button
-        type="button"
-        onclick={() => selectTab('chain')}
-        aria-pressed={activeTab === 'chain'}
-        class={activeTab === 'chain'
-          ? 'inline-flex items-center gap-1 rounded-md border border-primary/60 bg-primary/20 px-2 py-1 text-xs text-primary'
-          : 'inline-flex items-center gap-1 rounded-md border border-transparent px-2 py-1 text-xs text-muted-foreground hover:bg-muted/40 hover:text-foreground'}
-      >
-        <Zap size={11} />
-        Chain
-        {#if chainUnread}<span class="ml-1 h-1.5 w-1.5 rounded-full bg-primary"></span>{/if}
-      </button>
-      {#if GODMODE_ENGINE_ENABLED}
-        <button
-          type="button"
-          onclick={() => selectTab('godmode')}
-          aria-pressed={activeTab === 'godmode'}
-          class={activeTab === 'godmode'
-            ? 'inline-flex items-center gap-1 rounded-md border border-primary/60 bg-primary/20 px-2 py-1 text-xs text-primary'
-            : 'inline-flex items-center gap-1 rounded-md border border-transparent px-2 py-1 text-xs text-muted-foreground hover:bg-muted/40 hover:text-foreground'}
-        >
-          <Sparkles size={11} />
-          Godmode
-          {#if godmodeUnread}<span class="ml-1 h-1.5 w-1.5 rounded-full bg-primary"></span>{/if}
-        </button>
-      {/if}
-      <button
-        type="button"
-        onclick={onClose}
-        aria-label="Close workspace"
-        class="ml-auto inline-flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-muted/40 hover:text-foreground"
-      >
-        <X size={14} />
-      </button>
-    </div>
-    <!-- Per-tab model picker -->
-    {#if activeTab === 'chain'}
-      <ModelPickerV2
-        value={chainModel}
-        onChange={onChainModelChange}
-        recentsKey="cryptex.workspace.chain.recentModels"
-        triggerClass="text-xs text-muted-foreground border border-border/40 rounded-md px-2 py-1 hover:border-border/70 hover:text-foreground transition-colors"
-      />
-    {:else}
-      <ModelPickerV2
-        value={godmodeModel}
-        onChange={onGodmodeModelChange}
-        recentsKey="cryptex.workspace.godmode.recentModels"
-        triggerClass="text-xs text-muted-foreground border border-border/40 rounded-md px-2 py-1 hover:border-border/70 hover:text-foreground transition-colors"
-      />
-    {/if}
+    class="absolute top-0 left-0 z-10 h-full w-1.5 cursor-col-resize hover:bg-primary/20 active:bg-primary/30"
+  ></button>
+
+  <!-- Hybrid header -->
+  <div class="flex items-center gap-2 border-b border-border/40 px-3 py-2 pl-4 text-xs">
+    <GripVertical size={11} class="text-muted-foreground/60" />
+    <span class="text-muted-foreground">Attack workspace</span>
+    <span class="text-muted-foreground">·</span>
+    <span class="font-medium text-foreground">{toolLabel}</span>
+    <button
+      type="button"
+      aria-label="Close attack workspace"
+      onclick={onClose}
+      class="ml-auto rounded p-1 text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+    ><X size={11} /></button>
   </div>
 
-  <!-- Tab bodies — both mounted, inactive is display:none via inline style
-       (wins over Tailwind's .flex class; HTML `hidden` attribute would lose). -->
-  <div class="min-h-0 flex-1 flex-col" style:display={activeTab === 'chain' ? 'flex' : 'none'}>
-    <AttackChainTab {chat} {onInsertToComposer} />
+  <!-- Per-chat session history disclosure -->
+  <AttackHistoryDisclosure {chat} {activeTab} />
+
+  <!-- Active form -->
+  <div class="flex-1 min-h-0 overflow-hidden pl-1">
+    {#if activeTab === 'chain'}
+      <AttackChainTab {chat} {onInsertToComposer} />
+    {:else}
+      <GodmodeTab {chat} onNotify={pushNotify} />
+    {/if}
   </div>
-  {#if GODMODE_ENGINE_ENABLED}
-    <div class="min-h-0 flex-1 flex-col" style:display={activeTab === 'godmode' ? 'flex' : 'none'}>
-      <GodmodeTab {chat} onNotify={pushNotify} onRunComplete={onGodmodeRunComplete} />
-    </div>
-  {/if}
 
   <!-- Inline notify toast -->
   {#if notify}
