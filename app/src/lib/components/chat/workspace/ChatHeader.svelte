@@ -36,6 +36,12 @@
     });
   }
 
+  async function setMode(mode: 'creative' | 'intelligent' | 'adaptive') {
+    await repo.updateChat(chat.id, {
+      settings: { ...(chat.settings ?? {}), activeMode: mode }
+    });
+  }
+
   function focusTitle() {
     titleInput?.focus();
     titleInput?.select();
@@ -110,6 +116,28 @@
       {/snippet}
     </DropdownMenu.Trigger>
     <DropdownMenu.Content align="end" class="w-40">
+      {@const currentMode = chat.settings?.activeMode ?? 'creative'}
+      <DropdownMenu.Sub>
+        <DropdownMenu.SubTrigger>
+          <span>Mode</span>
+          <span class="ml-auto text-[10px] capitalize text-muted-foreground">{currentMode}</span>
+        </DropdownMenu.SubTrigger>
+        <DropdownMenu.SubContent>
+          <DropdownMenu.Item onclick={() => setMode('creative')}>
+            <span class="capitalize">Creative</span>
+            {#if currentMode === 'creative'}<span class="ml-auto text-primary">✓</span>{/if}
+          </DropdownMenu.Item>
+          <DropdownMenu.Item onclick={() => setMode('intelligent')}>
+            <span class="capitalize">Intelligent</span>
+            {#if currentMode === 'intelligent'}<span class="ml-auto text-primary">✓</span>{/if}
+          </DropdownMenu.Item>
+          <DropdownMenu.Item onclick={() => setMode('adaptive')}>
+            <span class="capitalize">Adaptive</span>
+            {#if currentMode === 'adaptive'}<span class="ml-auto text-primary">✓</span>{/if}
+          </DropdownMenu.Item>
+        </DropdownMenu.SubContent>
+      </DropdownMenu.Sub>
+      <DropdownMenu.Separator />
       <DropdownMenu.Item onclick={focusTitle}>Rename</DropdownMenu.Item>
       <DropdownMenu.Item onclick={duplicateChat}>Duplicate</DropdownMenu.Item>
       <DropdownMenu.Item onclick={exportJson}>Export as JSON</DropdownMenu.Item>

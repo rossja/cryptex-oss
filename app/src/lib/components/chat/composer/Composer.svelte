@@ -7,7 +7,6 @@
   import type { Technique } from '$lib/chat/techniques/types';
   import { repo } from '$lib/chat/repo';
   import { extractAttachment } from '$lib/chat/attachments/extract';
-  import ModePills from './ModePills.svelte';
   import SendStopButton from './SendStopButton.svelte';
   import SlashSuggestions from './SlashSuggestions.svelte';
   import AttachmentChips from './AttachmentChips.svelte';
@@ -314,7 +313,6 @@
 
   <AttachmentChips items={pending} onRemove={removeAttachment} />
 
-  <div class="mb-2 flex items-center gap-2"><ModePills {activeMode} {onModeChange} /></div>
   <div class="flex items-end gap-2">
     <textarea
       bind:this={textareaEl}
