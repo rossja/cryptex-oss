@@ -29,6 +29,8 @@ describe('runAttackSession', () => {
     // progress tier first, then compliance.
     gatewayChat.mockResolvedValueOnce({ content: '{"tier":"complete"}' });    // progress judge -> 10
     gatewayChat.mockResolvedValueOnce({ content: '{"tier":"substantive"}' }); // compliance judge
+    // termination-time final-answer extraction judge
+    gatewayChat.mockResolvedValueOnce({ content: '{"answer": null, "confidence": 0, "rationale": "test"}' });
 
     const streamChat = vi.fn().mockImplementation(async function* () {
       yield { type: 'text-delta', delta: 'Photosynthesis was first described...' };
@@ -72,6 +74,8 @@ describe('runAttackSession', () => {
     // judge IS called; ordering matters.
     gatewayChat.mockResolvedValueOnce({ content: '{"tier":"no"}' });      // progress judge
     gatewayChat.mockResolvedValueOnce({ content: '{"tier":"refusal"}' }); // compliance judge
+    // termination-time final-answer extraction judge
+    gatewayChat.mockResolvedValueOnce({ content: '{"answer": null, "confidence": 0, "rationale": "test"}' });
 
     const streamChat = vi.fn().mockImplementation(async function* () {
       yield { type: 'text-delta', delta: 'Target reply' };
@@ -100,6 +104,8 @@ describe('runAttackSession', () => {
     // Judges (progress fires first per Promise.all microtask ordering)
     gatewayChat.mockResolvedValueOnce({ content: '{"tier":"no"}' });        // progress judge
     gatewayChat.mockResolvedValueOnce({ content: '{"tier":"partial"}' });   // compliance judge
+    // termination-time final-answer extraction judge
+    gatewayChat.mockResolvedValueOnce({ content: '{"answer": null, "confidence": 0, "rationale": "test"}' });
 
     const streamChat = vi.fn().mockImplementation(async function* () {
       yield { type: 'text-delta', delta: 'Target reply' };
@@ -129,6 +135,8 @@ describe('runAttackSession', () => {
     // Judges (progress fires first per Promise.all microtask ordering)
     gatewayChat.mockResolvedValueOnce({ content: '{"tier":"no"}' });        // progress judge
     gatewayChat.mockResolvedValueOnce({ content: '{"tier":"partial"}' });   // compliance judge
+    // termination-time final-answer extraction judge
+    gatewayChat.mockResolvedValueOnce({ content: '{"answer": null, "confidence": 0, "rationale": "test"}' });
 
     const streamChat = vi.fn().mockImplementation(async function* () {
       yield { type: 'text-delta', delta: 'Target reply' };
@@ -200,6 +208,8 @@ describe('runAttackSession', () => {
     // judges (Promise.all — progress fires first per microtask order)
     gatewayChat.mockResolvedValueOnce({ content: '{"tier":"no"}' });
     gatewayChat.mockResolvedValueOnce({ content: '{"tier":"partial"}' });
+    // termination-time final-answer extraction judge
+    gatewayChat.mockResolvedValueOnce({ content: '{"answer": "x", "confidence": 0.9, "rationale": "test"}' });
 
     const streamChat = vi.fn().mockImplementation(async function* () {
       yield { type: 'text-delta', delta: 'Target reply' };
@@ -216,14 +226,63 @@ describe('runAttackSession', () => {
       streamChat
     }))) events.push(e);
 
-    // Three gatewayChat calls: one refine + two judges. Inspect the model arg.
+    // Four gatewayChat calls: one refine + two iteration judges + one extraction judge.
     const calls = gatewayChat.mock.calls.map((c) => c[0].model);
     expect(calls[0]).toBe('mock:orch');   // refineTurn
     expect(calls[1]).toBe('mock:judge');  // first judge (progress)
     expect(calls[2]).toBe('mock:judge');  // second judge (compliance)
+    expect(calls[3]).toBe('mock:judge');  // extraction judge
 
     // streamChat called once with target model.
     expect(streamChat).toHaveBeenCalledTimes(1);
     expect(streamChat.mock.calls[0][0].model).toBe('mock:target');
+  });
+
+  it('Scenario J — extractor fires at termination and payload carries finalAnswer fields', async () => {
+    const gatewayChat = vi.fn();
+    // refineTurn
+    gatewayChat.mockResolvedValueOnce({ content: 'Refined opener.' });
+    // progress judge -> 10 triggers extracted early-stop (Promise.all microtask order: progress first)
+    gatewayChat.mockResolvedValueOnce({ content: '{"tier":"complete"}' });
+    // compliance judge
+    gatewayChat.mockResolvedValueOnce({ content: '{"tier":"compliant"}' });
+    // extraction judge — return a structured answer
+    gatewayChat.mockResolvedValueOnce({
+      content: '{"answer": "Photosynthesis is the process by which plants convert light into chemical energy.", "confidence": 0.95, "rationale": "target gave a complete answer"}'
+    });
+
+    const streamChat = vi.fn().mockImplementation(async function* () {
+      yield { type: 'text-delta', delta: 'Photosynthesis is...' };
+      yield { type: 'finish' };
+    });
+
+    const events: OrchEvent[] = [];
+    for await (const e of runAttackSession(makeCtx({ gatewayChat, streamChat }))) events.push(e);
+
+    const finished = events.find((e) => e.type === 'finished') as Extract<OrchEvent, { type: 'finished' }>;
+    expect(finished).toBeDefined();
+    expect(finished.outcome).toBe('extracted');
+    expect(finished.finalAnswer).toBe('Photosynthesis is the process by which plants convert light into chemical energy.');
+    expect(finished.finalAnswerConfidence).toBe(0.95);
+    expect(finished.finalAnswerRationale).toBe('target gave a complete answer');
+  });
+
+  it('Scenario K — extractor short-circuits when transcript has no target turns (abort before first target reply)', async () => {
+    const ctrl = new AbortController();
+    const gatewayChat = vi.fn().mockImplementation(async () => {
+      ctrl.abort();
+      throw new DOMException('aborted', 'AbortError');
+    });
+    const streamChat = vi.fn();
+
+    const events: OrchEvent[] = [];
+    for await (const e of runAttackSession(makeCtx({ signal: ctrl.signal, gatewayChat, streamChat }))) events.push(e);
+
+    const finished = events.find((e) => e.type === 'finished') as Extract<OrchEvent, { type: 'finished' }>;
+    expect(finished).toBeDefined();
+    expect(finished.outcome).toBe('abandoned');
+    expect(finished.finalAnswer).toBeNull();
+    expect(finished.finalAnswerConfidence).toBe(0);
+    expect(finished.finalAnswerRationale).toMatch(/no target turns/);
   });
 });

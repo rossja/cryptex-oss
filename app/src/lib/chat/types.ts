@@ -316,6 +316,13 @@ export interface AttackSessionRow {
   strategyRotation: StrategyId[];
   /** v3: per-strategy turn budget (default 3). */
   turnsPerStrategy: number;
+  /** v3.1: the answer the judge extracted from the target transcript at run termination.
+   *  Null when no answer was extracted (target refused, or judge couldn't find one). */
+  finalAnswer?: string | null;
+  /** v3.1: judge confidence in the extracted answer (0..1). Null when finalAnswer is null. */
+  finalAnswerConfidence?: number | null;
+  /** v3.1: short prose rationale from the judge for the extraction decision. */
+  finalAnswerRationale?: string | null;
 }
 
 /** Events emitted by runAttackSession's async generator. The UI consumes these
@@ -327,7 +334,15 @@ export type OrchEvent =
   | { type: 'target_reply_delta'; iteration: number; delta: string }
   | { type: 'target_turn_committed'; turn: AttackSessionTurn }
   | { type: 'turn_scored'; iteration: number; tier: ComplianceTier; progress: number }
-  | { type: 'finished'; outcome: 'extracted' | 'partial' | 'abandoned'; confidence: number; summary: string }
+  | {
+      type: 'finished';
+      outcome: 'extracted' | 'partial' | 'abandoned';
+      confidence: number;
+      summary: string;
+      finalAnswer: string | null;
+      finalAnswerConfidence: number;
+      finalAnswerRationale: string;
+    }
   | { type: 'error'; code: string; message: string; iteration?: number }
   // v3 additions
   | { type: 'dossier_started' }

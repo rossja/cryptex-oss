@@ -4,6 +4,7 @@ import { runDossierPhase } from './dossier';
 import { refineTurn } from './refine-turn';
 import { fillTemplate, looksLikeRefusal } from './template-fill';
 import { scoreCompliance, scoreObjectiveProgress, type JudgeClient } from './orchestrator-score';
+import { extractFinalAnswer } from './extract-final-answer';
 
 /**
  * Default strategy rotation order — tuned by alignment friction.
@@ -61,6 +62,50 @@ export interface AttackSessionContext {
 }
 
 export async function* runAttackSession(ctx: AttackSessionContext): AsyncGenerator<OrchEvent> {
+  // Cumulative transcript — declared up-front so the hoisted runExtraction
+  // helper closes over it. Same array instance as Phase 1 below mutates.
+  const transcript: AttackSessionTurn[] = [];
+
+  // Hoisted judgeClient — shared between per-iteration scoring and
+  // termination-time extraction. The model id is ctx.judgeModelId so
+  // judge calls don't yoke to the orchestrator (per three-model split).
+  const judgeClient: JudgeClient = {
+    complete: async ({ system, user, signal }) => {
+      const res = await ctx.gatewayChat({
+        model: ctx.judgeModelId,
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: user }
+        ],
+        maxOutputTokens: 1000,
+        signal
+      });
+      try { return JSON.parse(res.content); }
+      catch { return { tier: 'no' }; }
+    }
+  };
+
+  /** Run the final-answer extractor against the current transcript.
+   *  Used by every non-crash termination site to produce the three answer
+   *  fields that ride the 'finished' event. Always returns a defined result
+   *  (no thrown errors propagate). */
+  async function runExtraction(): Promise<{
+    finalAnswer: string | null;
+    finalAnswerConfidence: number;
+    finalAnswerRationale: string;
+  }> {
+    const result = await extractFinalAnswer(
+      { judgeClient, signal: ctx.signal },
+      ctx.objective,
+      transcript
+    );
+    return {
+      finalAnswer: result.answer,
+      finalAnswerConfidence: result.confidence,
+      finalAnswerRationale: result.rationale
+    };
+  }
+
   yield { type: 'plan_start', objective: ctx.objective, maxAttempts: ctx.maxAttempts };
 
   // ── Phase 0: Dossier (only when orchestrator is browsing-capable) ───────
@@ -93,7 +138,6 @@ export async function* runAttackSession(ctx: AttackSessionContext): AsyncGenerat
   // ── Phase 1: Strategy rotation ──────────────────────────────────────────
   const rotation = DEFAULT_ROTATION_ORDER;
   const stepsPerStrategy = DEFAULT_STEPS_PER_STRATEGY;
-  const transcript: AttackSessionTurn[] = [];
   let turnBudget = ctx.maxAttempts;
   let iteration = 0;
   let aborted = false;
@@ -185,21 +229,6 @@ export async function* runAttackSession(ctx: AttackSessionContext): AsyncGenerat
 
         // ── 3. Score if target produced text ──
         if (targetText) {
-          const judgeClient: JudgeClient = {
-            complete: async ({ system, user, signal }) => {
-              const res = await ctx.gatewayChat({
-                model: ctx.judgeModelId,
-                messages: [
-                  { role: 'system', content: system },
-                  { role: 'user', content: user }
-                ],
-                maxOutputTokens: 200,
-                signal
-              });
-              try { return JSON.parse(res.content); }
-              catch { return { tier: 'no' }; }
-            }
-          };
           const [complianceRes, progress] = await Promise.all([
             scoreCompliance({ judgeClient, signal: ctx.signal }, targetText),
             scoreObjectiveProgress({ judgeClient, signal: ctx.signal }, ctx.objective, [...transcript, targetTurn])
@@ -215,11 +244,13 @@ export async function* runAttackSession(ctx: AttackSessionContext): AsyncGenerat
 
         // ── 4. Early stop ──
         if (maxProgress >= EARLY_STOP_PROGRESS) {
+          const ext = await runExtraction();
           yield {
             type: 'finished',
             outcome: 'extracted',
             confidence: 0.9,
-            summary: `Auto-stop: objective_progress >= ${EARLY_STOP_PROGRESS} on strategy ${strategyId}`
+            summary: `Auto-stop: objective_progress >= ${EARLY_STOP_PROGRESS} on strategy ${strategyId}`,
+            ...ext
           };
           return;
         }
@@ -237,7 +268,8 @@ export async function* runAttackSession(ctx: AttackSessionContext): AsyncGenerat
     }
 
     if (aborted || ctx.signal.aborted) {
-      yield { type: 'finished', outcome: 'abandoned', confidence: 0, summary: 'User aborted.' };
+      const ext = await runExtraction();
+      yield { type: 'finished', outcome: 'abandoned', confidence: 0, summary: 'User aborted.', ...ext };
       return;
     }
 
@@ -246,19 +278,30 @@ export async function* runAttackSession(ctx: AttackSessionContext): AsyncGenerat
       maxProgress >= EARLY_STOP_PROGRESS ? 'extracted'
       : maxProgress >= RESET_PROGRESS_THRESHOLD ? 'partial'
       : 'abandoned';
+    const ext = await runExtraction();
     yield {
       type: 'finished',
       outcome,
       confidence: Math.min(1, Math.max(0, maxProgress / 10)),
-      summary: `Ran ${iteration} turns across ${Math.min(rotation.length, Math.ceil(iteration / stepsPerStrategy))} strategies. Max progress: ${maxProgress}/10.`
+      summary: `Ran ${iteration} turns across ${Math.min(rotation.length, Math.ceil(iteration / stepsPerStrategy))} strategies. Max progress: ${maxProgress}/10.`,
+      ...ext
     };
   } catch (err) {
     if ((err as Error)?.name === 'AbortError' || ctx.signal.aborted) {
-      yield { type: 'finished', outcome: 'abandoned', confidence: 0, summary: 'User aborted.' };
+      const ext = await runExtraction();
+      yield { type: 'finished', outcome: 'abandoned', confidence: 0, summary: 'User aborted.', ...ext };
       return;
     }
     yield { type: 'error', code: 'engine_crash', message: (err as Error)?.message ?? String(err) };
-    yield { type: 'finished', outcome: 'abandoned', confidence: 0, summary: 'Engine error: run aborted.' };
+    yield {
+      type: 'finished',
+      outcome: 'abandoned',
+      confidence: 0,
+      summary: 'Engine error: run aborted.',
+      finalAnswer: null,
+      finalAnswerConfidence: 0,
+      finalAnswerRationale: 'engine crashed before extraction'
+    };
   }
 }
 
