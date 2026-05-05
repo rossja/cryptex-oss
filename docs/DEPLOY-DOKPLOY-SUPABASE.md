@@ -209,11 +209,27 @@ That's it. No manual intervention needed.
 
 ## Troubleshooting
 
+### "Auth is disabled in this build" on /login or /signup
+
+Cause: The env vars (`VITE_AUTH_ENABLED`, `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY`) didn't make it into the Docker **build** step. SvelteKit/Vite inline `PUBLIC_*` and `VITE_*` vars at BUILD time, not runtime — so setting them only in Dokploy's "Environment" tab is NOT enough; they have to be passed as Docker build args too.
+
+Fix:
+1. Confirm Dokploy → your service → **Environment** tab has all three vars set (Part 3.3).
+2. Confirm you're on a deploy from commit `d2c8e8e` or later (the version where the Dockerfile + docker-compose.yml plumb `VITE_AUTH_ENABLED` through as a build ARG). Older deploys won't pick it up no matter what you set.
+3. In Dokploy → your service → **Deployments** → click **Rebuild** (NOT just "Redeploy" — Rebuild forces the Docker build step to run again with the current env vars baked in).
+4. Hard-refresh the browser (Ctrl+Shift+R / Cmd+Shift+R) — the browser may have cached the old static bundle that says "Auth is disabled".
+
+To confirm the env vars actually reached the build, after rebuild open browser DevTools → Console on `/login` and run:
+```js
+window.__SUPABASE_URL_CHECK = !!document.querySelector('meta[name="supabase-status"]');
+```
+If the page no longer says "Auth is disabled", you're good.
+
 ### "Redirected too many times" or stuck on /login
 
 Cause: `VITE_AUTH_ENABLED=true` is set but `PUBLIC_SUPABASE_URL` or `PUBLIC_SUPABASE_ANON_KEY` is missing/wrong. The login page can't talk to Supabase, so sign-in never completes, so the chat redirect fires forever.
 
-Fix: Open browser DevTools → Console. You'll see something like `[auth] VITE_AUTH_ENABLED=true but PUBLIC_SUPABASE_URL... missing`. Re-check Part 3.3 env vars in Dokploy → re-deploy.
+Fix: Open browser DevTools → Console. You'll see something like `[auth] VITE_AUTH_ENABLED=true but PUBLIC_SUPABASE_URL... missing`. Re-check Part 3.3 env vars in Dokploy, then **Rebuild** (not just Redeploy).
 
 ### "Sign-in failed: redirect not allowed"
 

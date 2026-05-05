@@ -43,9 +43,12 @@ services:
       args:
         BASE_PATH: "${BASE_PATH:-}"
         PUBLIC_ADSENSE_CLIENT: "${PUBLIC_ADSENSE_CLIENT:-}"
-        # Forward-compat for D4 (Supabase auth). When unset, defaults are
-        # empty / true — the SvelteKit build inlines them and the auth
-        # stack falls back to local-only mode (no breaking change).
+        # Supabase auth (D4). All four MUST be passed as build args because
+        # SvelteKit/Vite inline VITE_* and PUBLIC_* at BUILD time, not
+        # runtime. Setting them only in `environment` below has no effect on
+        # the static bundle — the browser will see them as undefined and the
+        # auth surface will say "Auth is disabled in this build".
+        VITE_AUTH_ENABLED: "${VITE_AUTH_ENABLED:-}"
         PUBLIC_SUPABASE_URL: "${PUBLIC_SUPABASE_URL:-}"
         PUBLIC_SUPABASE_ANON_KEY: "${PUBLIC_SUPABASE_ANON_KEY:-}"
         PUBLIC_GODMODE_LOCAL_ENABLED: "${PUBLIC_GODMODE_LOCAL_ENABLED:-true}"

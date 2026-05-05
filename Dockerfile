@@ -20,17 +20,21 @@ WORKDIR /build
 # Build arguments (must be declared before first use)
 ARG BASE_PATH=""
 ARG PUBLIC_ADSENSE_CLIENT=""
-# Forward-compat for D4 (Supabase auth). When unset, defaults are empty / true
-# — SvelteKit inlines empty PUBLIC_SUPABASE_* and the auth stack falls back
-# to local-only mode (no breaking change to existing deploys).
+# Supabase auth (D4). When unset, defaults are empty — the auth stack falls
+# back to local-only mode (no breaking change to existing deploys). Set all
+# three to enable sign-in: VITE_AUTH_ENABLED=true + the two PUBLIC_SUPABASE_*.
+ARG VITE_AUTH_ENABLED=""
 ARG PUBLIC_SUPABASE_URL=""
 ARG PUBLIC_SUPABASE_ANON_KEY=""
 ARG PUBLIC_GODMODE_LOCAL_ENABLED="true"
 
 # Expose them as environment variables so Vite's build step inlines them
-# into the static output.
+# into the static output. (PUBLIC_* and VITE_* are read at BUILD time by
+# SvelteKit / Vite — runtime container env has no effect on the served
+# bundle, so they MUST be passed as build args, not just runtime env.)
 ENV BASE_PATH=${BASE_PATH} \
     PUBLIC_ADSENSE_CLIENT=${PUBLIC_ADSENSE_CLIENT} \
+    VITE_AUTH_ENABLED=${VITE_AUTH_ENABLED} \
     PUBLIC_SUPABASE_URL=${PUBLIC_SUPABASE_URL} \
     PUBLIC_SUPABASE_ANON_KEY=${PUBLIC_SUPABASE_ANON_KEY} \
     PUBLIC_GODMODE_LOCAL_ENABLED=${PUBLIC_GODMODE_LOCAL_ENABLED}
