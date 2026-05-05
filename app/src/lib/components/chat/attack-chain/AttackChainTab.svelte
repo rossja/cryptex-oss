@@ -10,10 +10,15 @@
   import AttackSessionHistory from './AttackSessionHistory.svelte';
   import ResearchDossierCard from './ResearchDossierCard.svelte';
   import LayerPicker from './LayerPicker.svelte';
+  import RoleModelPicker from './RoleModelPicker.svelte';
+  import { catalog } from '$lib/ai/catalog.svelte';
+  import { resolveDefaultModels, isUncensoredOrchestrator } from '$lib/chat/chain/default-models';
   import Play from 'lucide-svelte/icons/play';
   import Square from 'lucide-svelte/icons/square';
   import ArrowRight from 'lucide-svelte/icons/arrow-right';
   import Plus from 'lucide-svelte/icons/plus';
+  import Info from 'lucide-svelte/icons/info';
+  import { base } from '$app/paths';
 
   type Props = {
     chat: ChatRow;
@@ -27,6 +32,68 @@
   let objective = $state(chat.settings.attackChainConfig?.input ?? '');
   let maxAttempts = $state<number>(9);
   let hintLayers = $state<string[]>(chat.settings.attackChainConfig?.layers ?? []);
+
+  // Resolved defaults — recomputed when chat or catalog changes.
+  const resolvedDefaults = $derived(
+    resolveDefaultModels({
+      chat,
+      availableModels: (catalog.list ?? []) as unknown as Array<{ qualifiedId: string }>
+    })
+  );
+
+  // Persisted-or-default IDs for each role, with read-side fallback chain:
+  // attackChainConfig.<role>ModelId  ?? attackChainConfig.modelQualifiedId  ?? chat.modelQualifiedId
+  const orchestratorModelId = $derived(
+    chat.settings?.attackChainConfig?.orchestratorModelId
+      ?? chat.settings?.attackChainConfig?.modelQualifiedId
+      ?? resolvedDefaults.orchestrator
+  );
+  const targetModelId = $derived(
+    chat.settings?.attackChainConfig?.targetModelId
+      ?? chat.settings?.attackChainConfig?.modelQualifiedId
+      ?? resolvedDefaults.target
+  );
+  const judgeModelId = $derived(
+    chat.settings?.attackChainConfig?.judgeModelId
+      ?? chat.settings?.attackChainConfig?.modelQualifiedId
+      ?? resolvedDefaults.judge
+  );
+
+  // Tip visibility — only when orchestrator looks aligned and user hasn't dismissed.
+  const showOrchestratorTip = $derived(
+    !isUncensoredOrchestrator(orchestratorModelId)
+      && !chat.settings?.attackChainConfig?.recommendedTipDismissed
+  );
+
+  function defaultAttackChainConfig(): import('$lib/chat/types').AttackChainConfig {
+    return {
+      input: '',
+      layers: [],
+      layerParams: [],
+      layerOutputEdits: [],
+      executeEnabled: false,
+      finalSystemPrompt: '',
+      autoRetryEnabled: false
+    };
+  }
+
+  async function setRoleModel(role: 'orchestrator' | 'target' | 'judge', id: string) {
+    const cfg = chat.settings?.attackChainConfig ?? defaultAttackChainConfig();
+    const next = { ...cfg, [`${role}ModelId`]: id };
+    await repo.updateChat(chat.id, {
+      settings: { ...chat.settings, attackChainConfig: next }
+    });
+  }
+
+  async function dismissOrchestratorTip() {
+    const cfg = chat.settings?.attackChainConfig ?? defaultAttackChainConfig();
+    await repo.updateChat(chat.id, {
+      settings: {
+        ...chat.settings,
+        attackChainConfig: { ...cfg, recommendedTipDismissed: true }
+      }
+    });
+  }
 
   // ---- Run state ----
   let running = $state(false);
@@ -91,9 +158,6 @@
     finalConfidence = null;
     finalSummary = null;
 
-    const orchestratorModelId = chat.settings.attackChainConfig?.modelQualifiedId ?? chat.modelQualifiedId;
-    const targetModelId = orchestratorModelId;
-
     const session = await repo.saveAttackSession({
       chatId: chat.id,
       objective,
@@ -113,7 +177,7 @@
       objective,
       targetModelId,
       orchestratorModelId,
-      judgeModelId: orchestratorModelId,
+      judgeModelId,
       targetModelLabel: targetModelId,
       maxAttempts,
       mainChatHistory: recentMessages
@@ -262,6 +326,49 @@
 </script>
 
 <div class="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-4">
+  <!-- Role pickers -->
+  <div class="flex flex-col gap-3 border-b border-border/30 pb-3">
+    <RoleModelPicker
+      label="Orchestrator"
+      description="drafts the attack messages"
+      value={orchestratorModelId}
+      onChange={(id) => setRoleModel('orchestrator', id)}
+      recentsKey="cryptex.chain.orchestrator.recentModels"
+      tip={showOrchestratorTip ? orchestratorTip : null}
+    />
+    <RoleModelPicker
+      label="Target"
+      description="model under test"
+      value={targetModelId}
+      onChange={(id) => setRoleModel('target', id)}
+      recentsKey="cryptex.chain.target.recentModels"
+    />
+    <RoleModelPicker
+      label="Judge"
+      description="scores responses (cheap is fine)"
+      value={judgeModelId}
+      onChange={(id) => setRoleModel('judge', id)}
+      recentsKey="cryptex.chain.judge.recentModels"
+    />
+  </div>
+
+  {#snippet orchestratorTip()}
+    <div class="flex items-start gap-1 rounded bg-yellow-500/10 px-2 py-1 text-[10px] text-yellow-400">
+      <Info size={10} class="shrink-0 mt-0.5" />
+      <span class="flex-1">
+        Aligned models often refuse to draft attack messages. Pick an uncensored
+        orchestrator (DeepSeek R1, Nous Hermes, Dolphin) for higher success rates.
+        <a href="{base}/guide/chat/attack-chain" class="underline">Learn more</a>
+      </span>
+      <button
+        type="button"
+        onclick={dismissOrchestratorTip}
+        class="text-yellow-400/60 hover:text-yellow-400"
+        aria-label="Dismiss tip"
+      >×</button>
+    </div>
+  {/snippet}
+
   <!-- Objective -->
   <label class="flex flex-col gap-1 text-xs">
     <span class="font-medium text-foreground">Objective</span>
