@@ -174,7 +174,7 @@
             </button>
           </div>
         </div>
-        <ol class="space-y-2 max-h-[520px] overflow-y-auto pr-1">
+        <ol class="space-y-2 max-h-[520px] overflow-y-auto cryptex-scroll pr-1">
           {#each s.outputs as out, i (i)}
             <li class="group rounded-md border border-border/50 bg-background/40 px-3 py-2">
               <div class="flex items-center justify-between mb-1">
@@ -189,7 +189,7 @@
                   <Copy size={11} /> Copy
                 </button>
               </div>
-              <pre class="font-mono text-[11px] whitespace-pre-wrap break-all max-h-40 overflow-y-auto">{out.prompt}</pre>
+              <pre class="font-mono text-[11px] whitespace-pre-wrap break-all max-h-40 overflow-y-auto cryptex-scroll">{out.prompt}</pre>
             </li>
           {/each}
         </ol>

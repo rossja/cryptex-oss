@@ -8,7 +8,7 @@
 </script>
 
 {#if log.length > 0}
-  <div class="flex items-center gap-1 overflow-x-auto rounded-md border border-border/40 bg-background/30 px-2 py-1 text-[10px]">
+  <div class="flex items-center gap-1 overflow-x-auto cryptex-scroll rounded-md border border-border/40 bg-background/30 px-2 py-1 text-[10px]">
     {#each log as entry, i (i + entry.iteration)}
       {#if entry.action === 'pivot'}
         <RefreshCw size={10} class="shrink-0 text-orange-400" />

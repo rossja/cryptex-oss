@@ -97,7 +97,7 @@
         class="h-9 flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
       />
     </div>
-    <div class="max-h-80 overflow-y-auto py-1">
+    <div class="max-h-80 overflow-y-auto cryptex-scroll py-1">
       {#if filtered().length === 0}
         <div class="px-3 py-2 text-xs text-muted-foreground">No matches</div>
       {/if}

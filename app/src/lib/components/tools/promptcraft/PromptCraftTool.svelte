@@ -246,7 +246,7 @@
             <Copy size={11} /> Copy all
           </button>
         </div>
-        <ol class="space-y-2 max-h-[560px] overflow-y-auto pr-1">
+        <ol class="space-y-2 max-h-[560px] overflow-y-auto cryptex-scroll pr-1">
           {#each s.outputs as out, i (i)}
             <li class="group rounded-md border border-border/50 bg-background/40 px-3 py-2">
               <div class="flex items-center justify-between mb-1">

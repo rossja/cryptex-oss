@@ -363,7 +363,7 @@
   }
 </script>
 
-<div class="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-4">
+<div class="flex h-full min-h-0 flex-col gap-3 overflow-y-auto cryptex-scroll p-4">
   <!-- Role pickers -->
   <div class="flex flex-col gap-3 border-b border-border/30 pb-3">
     <RoleModelPicker
@@ -469,7 +469,7 @@
           class="text-[10px] text-muted-foreground hover:text-foreground"
         >clear</button>
       </div>
-      <div class="flex max-h-40 flex-col gap-1 overflow-y-auto">
+      <div class="flex max-h-40 flex-col gap-1 overflow-y-auto cryptex-scroll">
         {#each errorLog.slice(-8) as err, i (err.at + '-' + i)}
           <div class="text-[10px] leading-snug text-red-300">
             <span class="font-mono uppercase text-[9px] text-red-400">{err.code}</span>

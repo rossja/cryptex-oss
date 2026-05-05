@@ -262,7 +262,7 @@
           <Copy size={11} /> Copy all
         </button>
       </div>
-      <ol class="space-y-1.5 max-h-[520px] overflow-y-auto pr-1">
+      <ol class="space-y-1.5 max-h-[520px] overflow-y-auto cryptex-scroll pr-1">
         {#each s.messages as msg, i (i + ':' + msg.slice(0, 20))}
           <li class="group flex items-start gap-3 rounded-md border border-border/50 bg-background/40 px-3 py-2">
             <span class="shrink-0 font-mono text-[10px] text-muted-foreground pt-0.5 w-6 text-right">{i + 1}</span>

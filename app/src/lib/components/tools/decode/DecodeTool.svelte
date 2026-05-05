@@ -172,7 +172,7 @@
         <Sparkles size={11} class="text-accent" />
         Alternatives ({result.alternatives.length})
       </h3>
-      <ol class="space-y-1 max-h-64 overflow-y-auto pr-1">
+      <ol class="space-y-1 max-h-64 overflow-y-auto cryptex-scroll pr-1">
         <!-- Primary as pseudo-item zero so the user can toggle back -->
         <li>
           <button

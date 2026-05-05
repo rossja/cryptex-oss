@@ -126,7 +126,7 @@
       </div>
 
       <!-- Model list -->
-      <div class="max-h-[60vh] flex-1 overflow-y-auto">
+      <div class="max-h-[60vh] flex-1 overflow-y-auto cryptex-scroll">
         {#if recentModels.length > 0 && !query && filters.size === 0}
           <div class="px-2 pt-3 pb-1">
             <div class="mb-1 border-b border-white/5 pb-1 px-2">

@@ -192,7 +192,7 @@
           class="h-10 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
         />
       </div>
-      <ul class="max-h-64 overflow-y-auto py-1">
+      <ul class="max-h-64 overflow-y-auto cryptex-scroll py-1">
         {#if filtered().length === 0}
           <li class="px-3 py-2 text-xs text-muted-foreground">No matches</li>
         {/if}

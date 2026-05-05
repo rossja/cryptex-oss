@@ -52,7 +52,7 @@
     <span>History</span>
     <span class="ml-auto text-[10px]">{count === 0 ? 'none' : count}</span>
   </summary>
-  <div class="flex max-h-48 flex-col gap-0.5 overflow-y-auto border-t border-border/30 px-2 py-1.5 text-[11px]">
+  <div class="flex max-h-48 flex-col gap-0.5 overflow-y-auto cryptex-scroll border-t border-border/30 px-2 py-1.5 text-[11px]">
     {#if activeTab === 'chain'}
       {#each chainSessions as s (s.id)}
         <div class="flex items-center gap-2 truncate rounded px-1.5 py-1 hover:bg-muted/30">

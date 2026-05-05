@@ -91,9 +91,9 @@
   summary { list-style: none; }
   summary::-webkit-details-marker { display: none; }
 
-  .cryptex-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+  .cryptex-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
   .cryptex-scroll::-webkit-scrollbar-track { background: transparent; }
-  .cryptex-scroll::-webkit-scrollbar-thumb { background: hsl(var(--muted) / 0.4); border-radius: 4px; }
+  .cryptex-scroll::-webkit-scrollbar-thumb { background: hsl(var(--muted) / 0.4); border-radius: 3px; }
   .cryptex-scroll::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted) / 0.7); }
   .cryptex-scroll { scrollbar-width: thin; scrollbar-color: hsl(var(--muted) / 0.4) transparent; }
 

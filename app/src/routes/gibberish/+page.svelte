@@ -331,7 +331,7 @@
               Variations will appear here after you generate.
             </p>
           {:else}
-            <ol class="space-y-1.5 max-h-[380px] overflow-y-auto pr-1">
+            <ol class="space-y-1.5 max-h-[380px] overflow-y-auto cryptex-scroll pr-1">
               {#each s.removalOutputs as line, i}
                 <li class="group flex items-start gap-3 rounded-md border border-border/50 bg-background/40 px-3 py-2">
                   <span class="shrink-0 font-mono text-[10px] text-muted-foreground pt-0.5">{i + 1}.</span>

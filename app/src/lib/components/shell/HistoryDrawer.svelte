@@ -159,7 +159,7 @@
     </div>
 
     <!-- Content -->
-    <div class="flex-1 overflow-y-auto px-3 py-2">
+    <div class="flex-1 overflow-y-auto cryptex-scroll px-3 py-2">
       {#if tab === 'session'}
         {#if sessionEntries.length === 0}
           <p class="py-12 text-center text-xs text-muted-foreground">

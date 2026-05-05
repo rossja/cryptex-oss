@@ -94,7 +94,7 @@
     <!-- JSONL preview -->
     <div class="flex flex-col gap-1 flex-1 min-h-0">
       <span class="text-xs text-muted-foreground">JSONL preview</span>
-      <pre class="flex-1 overflow-auto rounded bg-muted/40 p-2 font-mono text-[10px] leading-relaxed text-foreground/80 min-h-[120px] max-h-[320px]">{jsonPreview}</pre>
+      <pre class="flex-1 overflow-auto cryptex-scroll rounded bg-muted/40 p-2 font-mono text-[10px] leading-relaxed text-foreground/80 min-h-[120px] max-h-[320px]">{jsonPreview}</pre>
     </div>
   {/if}
 </div>

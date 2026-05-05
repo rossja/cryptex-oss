@@ -351,7 +351,7 @@
   }
 </script>
 
-<div class="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-4">
+<div class="flex h-full min-h-0 flex-col gap-3 overflow-y-auto cryptex-scroll p-4">
   {#if !isSignedIn}
     <!-- Auth unavailable — Godmode hits a paid edge function. Two sub-states:
          (a) Supabase configured → show sign-in buttons
