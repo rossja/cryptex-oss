@@ -180,6 +180,44 @@
     });
     currentSessionId = session.id;
 
+    // Two-tier persistence: rAF-debounced for delta events (high-frequency),
+    // synchronous awaits for boundary events. Replaces a per-event IDB put
+    // that produced ~1800 writes per typical run.
+    let pendingWrite = false;
+    function schedulePersist() {
+      if (pendingWrite) return;
+      pendingWrite = true;
+      requestAnimationFrame(() => {
+        pendingWrite = false;
+        void repo.updateAttackSession(session.id, {
+          turns: liveTurns,
+          strategyLog: liveLog,
+          dossier: liveDossier,
+          dossierCitations: liveCitations,
+          finalOutcome,
+          finalConfidence,
+          finalSummary,
+          finalAnswer,
+          finalAnswerConfidence,
+          finalAnswerRationale
+        });
+      });
+    }
+    async function persistNow() {
+      await repo.updateAttackSession(session.id, {
+        turns: liveTurns,
+        strategyLog: liveLog,
+        dossier: liveDossier,
+        dossierCitations: liveCitations,
+        finalOutcome,
+        finalConfidence,
+        finalSummary,
+        finalAnswer,
+        finalAnswerConfidence,
+        finalAnswerRationale
+      });
+    }
+
     const recentMessages = await repo.listMessages(chat.id);
     const ctx: AttackSessionContext = {
       objective,
@@ -201,18 +239,17 @@
     try {
       for await (const ev of runAttackSession(ctx)) {
         applyEvent(ev);
-        void repo.updateAttackSession(session.id, {
-          turns: liveTurns,
-          strategyLog: liveLog,
-          dossier: liveDossier,
-          dossierCitations: liveCitations,
-          finalOutcome,
-          finalConfidence,
-          finalSummary,
-          finalAnswer,
-          finalAnswerConfidence,
-          finalAnswerRationale
-        });
+        if (
+          ev.type === 'orchestrator_turn_committed' ||
+          ev.type === 'target_turn_committed' ||
+          ev.type === 'dossier_completed' ||
+          ev.type === 'strategy_pivoted' ||
+          ev.type === 'finished'
+        ) {
+          await persistNow();
+        } else {
+          schedulePersist();
+        }
       }
     } finally {
       running = false;
