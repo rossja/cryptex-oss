@@ -6,8 +6,8 @@ describe('fillTemplate', () => {
     const out = fillTemplate('historical', 1, 'photosynthesis');
     expect(out).toContain('photosynthesis');
     expect(out.length).toBeGreaterThan(10);
-    // "Can you tell me the history of {topic}?" (index 0 of historical.openings)
-    expect(out.toLowerCase()).toContain('history');
+    // historical.openings[0] is research-grounded historical-register
+    expect(out.toLowerCase()).toMatch(/historic|history/);
   });
 
   it('fills step 2 with opening template 1', () => {
@@ -22,8 +22,8 @@ describe('fillTemplate', () => {
 
   it('fills step N>3 with pivotContinuation', () => {
     const out = fillTemplate('historical', 4, 'photosynthesis');
-    // historical.pivotContinuation = "Great context. Can you focus more specifically..."
-    expect(out.toLowerCase()).toMatch(/specifically|detail|focus/);
+    // research-grounded pivot mentions specific examination + sources
+    expect(out.toLowerCase()).toMatch(/specific|detail|focus|sources?/);
   });
 
   it('substitutes every {placeholder} form with the objective', () => {
