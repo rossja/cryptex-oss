@@ -209,9 +209,51 @@ That's it. No manual intervention needed.
 
 ## Troubleshooting
 
+### Console says `[auth] VITE_AUTH_ENABLED=true but PUBLIC_SUPABASE_URL or PUBLIC_SUPABASE_ANON_KEY missing` (login page renders, but every action fails with "Auth not enabled")
+
+This is the most common Dokploy gotcha. The login UI rendered (so `VITE_AUTH_ENABLED` reached the build), but the two Supabase vars did NOT — they're undefined in the served bundle.
+
+**Why it happens:** Dokploy compose apps use Docker Compose's `${VAR:-}` interpolation to inject build args. Compose reads those values from a `.env` file in the build context (or the host shell). On some Dokploy versions the **Environment** tab only writes runtime container env, NOT the compose-level `.env` — so build interpolation resolves to empty, even though the runtime env tab shows the value correctly.
+
+**Diagnose first** (Cryptex's Dockerfile prints a build-arg diagnostic). In Dokploy → your service → **Deployments** → open the latest build log and search for `[cryptex-build]`. You'll see exactly five lines like:
+
+```
+[cryptex-build] BASE_PATH=set
+[cryptex-build] VITE_AUTH_ENABLED=true
+[cryptex-build] PUBLIC_SUPABASE_URL=abcdefgh.supabase.co
+[cryptex-build] PUBLIC_SUPABASE_ANON_KEY=set, length=232
+[cryptex-build] PUBLIC_GODMODE_LOCAL_ENABLED=true
+```
+
+If any line shows `MISSING`, that variable did NOT reach the build step.
+
+**Fix — try in this order:**
+
+1. **Restart the build, not the container.** In Dokploy click **Deployments** → **Rebuild** (NOT Redeploy / NOT Restart). Only Rebuild re-runs `docker build` with current env values baked in.
+
+2. **Set them in Dokploy's "Build" tab, not just "Environment".** Some Dokploy versions (≥ 0.18) split runtime env from build-time env into separate UI sections. Look for any of these labels in your service's settings sidebar:
+   - "Build Arguments" / "Build Args"
+   - "Build Variables"
+   - "Build-time env"
+   - A "Build" tab next to the "Environment" tab
+
+   Paste the same five vars (`VITE_AUTH_ENABLED`, `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY`, `PUBLIC_GODMODE_LOCAL_ENABLED`, `DOMAIN`) there as well. Then Rebuild.
+
+3. **If your Dokploy version has only one Environment tab**, the values from Environment SHOULD propagate to compose via `.env`. Confirm by SSH'ing into your VPS and running:
+   ```bash
+   cat /etc/dokploy/compose/<your-service-name>/.env
+   ```
+   You should see the variables there. If the file is missing or empty, that's a Dokploy bug — file an issue at <https://github.com/Dokploy/dokploy/issues> and use the workaround in step 4.
+
+4. **Workaround — bake values into a fork.** As a last resort, in your fork edit `docker-compose.yml` and replace the `${VAR:-}` interpolations with literal values. Push, Rebuild. NEVER do this for `PUBLIC_SUPABASE_ANON_KEY` if your fork is public — the anon key is browser-safe but you still don't want it in git history. Make the fork private if you go this route.
+
+5. **Hard-refresh the browser** (Ctrl+Shift+R / Cmd+Shift+R) after any successful rebuild — the browser may have cached the old static bundle.
+
 ### "Auth is disabled in this build" on /login or /signup
 
-Cause: The env vars (`VITE_AUTH_ENABLED`, `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY`) didn't make it into the Docker **build** step. SvelteKit/Vite inline `PUBLIC_*` and `VITE_*` vars at BUILD time, not runtime — so setting them only in Dokploy's "Environment" tab is NOT enough; they have to be passed as Docker build args too.
+Cause: Same as above, but specifically `VITE_AUTH_ENABLED` is missing. Follow the same diagnostic + rebuild flow.
+
+Older context: SvelteKit/Vite inline `PUBLIC_*` and `VITE_*` vars at BUILD time, not runtime — so setting them only in Dokploy's "Environment" tab is NOT enough; they have to be passed as Docker build args too.
 
 Fix:
 1. Confirm Dokploy → your service → **Environment** tab has all three vars set (Part 3.3).

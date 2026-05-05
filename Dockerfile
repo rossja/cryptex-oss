@@ -39,6 +39,17 @@ ENV BASE_PATH=${BASE_PATH} \
     PUBLIC_SUPABASE_ANON_KEY=${PUBLIC_SUPABASE_ANON_KEY} \
     PUBLIC_GODMODE_LOCAL_ENABLED=${PUBLIC_GODMODE_LOCAL_ENABLED}
 
+# Visible build-arg diagnostic — prints to the Dokploy build log so you can
+# tell from the build output whether the env vars actually reached the build
+# step. Values are masked (URL host shown, key length only) so the log is
+# safe to share for support. If a value shows MISSING, the variable wasn't
+# passed as a Docker build arg — see docs/DEPLOY-DOKPLOY-SUPABASE.md.
+RUN echo "[cryptex-build] BASE_PATH=${BASE_PATH:+set}${BASE_PATH:-MISSING}" \
+ && echo "[cryptex-build] VITE_AUTH_ENABLED=${VITE_AUTH_ENABLED:-MISSING}" \
+ && echo "[cryptex-build] PUBLIC_SUPABASE_URL=${PUBLIC_SUPABASE_URL:+$(echo $PUBLIC_SUPABASE_URL | cut -d/ -f3)}${PUBLIC_SUPABASE_URL:-MISSING}" \
+ && echo "[cryptex-build] PUBLIC_SUPABASE_ANON_KEY=${PUBLIC_SUPABASE_ANON_KEY:+set, length=$(echo -n $PUBLIC_SUPABASE_ANON_KEY | wc -c)}${PUBLIC_SUPABASE_ANON_KEY:-MISSING}" \
+ && echo "[cryptex-build] PUBLIC_GODMODE_LOCAL_ENABLED=${PUBLIC_GODMODE_LOCAL_ENABLED:-MISSING}"
+
 # The SvelteKit build reads transformers from ../src/transformers via a Vite
 # alias, so we bring both trees into the build context.
 COPY src/transformers ./src/transformers
