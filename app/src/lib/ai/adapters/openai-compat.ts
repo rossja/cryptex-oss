@@ -21,6 +21,19 @@ function needsCompletionTokensRewrite(modelId: unknown): boolean {
 }
 
 /**
+ * DeepSeek-reasoner shares the reasoning-budget problem with OpenAI's o-series
+ * (default max_tokens consumed by internal chain-of-thought, empty visible
+ * output) but uses plain `max_tokens` rather than `max_completion_tokens`.
+ * Bump the floor without swapping the field name. DeepSeek silently ignores
+ * unsupported params (temperature, top_p, etc.) so we don't strip them.
+ */
+const DEEPSEEK_REASONER_RE = /^deepseek-reasoner(?:[-.].*)?$/i;
+
+function needsDeepseekReasonerFloor(modelId: unknown): boolean {
+  return typeof modelId === 'string' && DEEPSEEK_REASONER_RE.test(modelId);
+}
+
+/**
  * Reasoning + GPT-5 models budget BOTH internal reasoning tokens and visible
  * output tokens against max_completion_tokens. The app's default cap (4096)
  * is too small — models often spend the entire budget on reasoning and emit
@@ -58,6 +71,12 @@ async function patchedFetch(
         delete body.logit_bias;
         delete body.logprobs;
         delete body.top_logprobs;
+        init = { ...init, body: JSON.stringify(body) };
+      }
+      if (needsDeepseekReasonerFloor(body?.model)) {
+        if (typeof body.max_tokens !== 'number' || body.max_tokens < REASONING_MIN_BUDGET) {
+          body.max_tokens = REASONING_MIN_BUDGET;
+        }
         init = { ...init, body: JSON.stringify(body) };
       }
     } catch {

@@ -131,3 +131,67 @@ describe('OPENAI_COMPAT_PRESETS — DeepSeek', () => {
     expect(ids).toContain('deepseek');
   });
 });
+
+describe('patchedFetch — deepseek-reasoner', () => {
+  it('bumps max_tokens to REASONING_MIN_BUDGET (32000) for deepseek-reasoner', async () => {
+    const captured: { url: string; init: RequestInit }[] = [];
+    global.fetch = vi.fn(async (url: any, init: any) => {
+      captured.push({ url: url.toString(), init });
+      return new Response(JSON.stringify({
+        id: 'r', object: 'chat.completion',
+        choices: [{ message: { role: 'assistant', content: 'ok' }, finish_reason: 'stop', index: 0 }],
+        usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 }
+      }), { status: 200, headers: { 'content-type': 'application/json' } });
+    }) as any;
+
+    const mod = await import('../adapters/openai-compat');
+    const adapter = mod.openaiCompatAdapter({
+      id: 'openai-compat', instanceId: 'ds-1', name: 'DeepSeek',
+      presetId: 'deepseek', baseURL: 'https://api.deepseek.com/v1',
+      apiKey: 'sk-test', enabled: true
+    });
+    const model = adapter.resolveModel('deepseek-reasoner');
+    await model.doGenerate({
+      prompt: [{ role: 'user', content: [{ type: 'text', text: 'hi' }] }],
+      maxOutputTokens: 4096
+    } as any);
+
+    expect(captured).toHaveLength(1);
+    const sentBody = JSON.parse(captured[0].init.body as string);
+    expect(sentBody.model).toBe('deepseek-reasoner');
+    expect(sentBody.max_tokens).toBe(32000);
+    // DeepSeek tolerates temperature/top_p; we don't strip them like OpenAI does
+    // for o-series. The test doesn't pass them, so this just verifies the rewrite
+    // didn't accidentally swap the field name.
+    expect(sentBody.max_completion_tokens).toBeUndefined();
+  });
+
+  it('does not modify max_tokens for non-reasoner DeepSeek models', async () => {
+    const captured: { url: string; init: RequestInit }[] = [];
+    global.fetch = vi.fn(async (url: any, init: any) => {
+      captured.push({ url: url.toString(), init });
+      return new Response(JSON.stringify({
+        id: 'r', object: 'chat.completion',
+        choices: [{ message: { role: 'assistant', content: 'ok' }, finish_reason: 'stop', index: 0 }],
+        usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 }
+      }), { status: 200, headers: { 'content-type': 'application/json' } });
+    }) as any;
+
+    const mod = await import('../adapters/openai-compat');
+    const adapter = mod.openaiCompatAdapter({
+      id: 'openai-compat', instanceId: 'ds-1', name: 'DeepSeek',
+      presetId: 'deepseek', baseURL: 'https://api.deepseek.com/v1',
+      apiKey: 'sk-test', enabled: true
+    });
+    const model = adapter.resolveModel('deepseek-chat');
+    await model.doGenerate({
+      prompt: [{ role: 'user', content: [{ type: 'text', text: 'hi' }] }],
+      maxOutputTokens: 4096
+    } as any);
+
+    expect(captured).toHaveLength(1);
+    const sentBody = JSON.parse(captured[0].init.body as string);
+    expect(sentBody.model).toBe('deepseek-chat');
+    expect(sentBody.max_tokens).toBe(4096); // unchanged
+  });
+});
