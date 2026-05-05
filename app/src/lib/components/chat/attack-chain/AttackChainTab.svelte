@@ -19,6 +19,7 @@
   import Plus from 'lucide-svelte/icons/plus';
   import Info from 'lucide-svelte/icons/info';
   import Copy from 'lucide-svelte/icons/copy';
+  import Pin from 'lucide-svelte/icons/pin';
   import { base } from '$app/paths';
 
   type Props = {
@@ -333,6 +334,18 @@
     if (row) await promoteFullSession(row);
   }
 
+  async function pinCurrentSession() {
+    if (!currentSessionId) return;
+    await repo.pinAttackSession(chat.id, currentSessionId);
+    showToast('success', 'Pinned. Subsequent main-chat sends will use this session as context.');
+  }
+
+  async function pinSession(session: AttackSessionRow) {
+    await repo.pinAttackSession(chat.id, session.id);
+    const preview = session.objective.length > 40 ? session.objective.slice(0, 40) + '…' : session.objective;
+    showToast('success', `Pinned: ${preview}`);
+  }
+
   async function copyFinalAnswer() {
     if (!finalAnswer) return;
     try {
@@ -527,6 +540,13 @@
       {/if}
       <div class="mt-2 flex gap-2">
         <button type="button" onclick={promoteCurrentSession} class="inline-flex items-center gap-1 rounded bg-primary px-2 py-1 text-[10px] text-primary-foreground hover:bg-primary/90"><ArrowRight size={10} /> Send thread to main chat</button>
+        <button
+          type="button"
+          onclick={pinCurrentSession}
+          class="inline-flex items-center gap-1 rounded border border-primary/30 px-2 py-1 text-[10px] text-primary hover:bg-primary/10"
+        >
+          <Pin size={10} /> Pin to chat
+        </button>
       </div>
     </div>
   {/if}
@@ -539,5 +559,11 @@
   {/if}
 
   <!-- History -->
-  <AttackSessionHistory {sessions} onPromote={promoteFullSession} onDelete={deleteSession} />
+  <AttackSessionHistory
+    {sessions}
+    pinnedSessionId={chat.settings?.persistedAttackSessionId}
+    onPromote={promoteFullSession}
+    onDelete={deleteSession}
+    onPin={pinSession}
+  />
 </div>

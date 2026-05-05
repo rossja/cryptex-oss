@@ -4,13 +4,16 @@
   import ChevronRight from 'lucide-svelte/icons/chevron-right';
   import Trash2 from 'lucide-svelte/icons/trash-2';
   import ArrowRight from 'lucide-svelte/icons/arrow-right';
+  import Pin from 'lucide-svelte/icons/pin';
 
   type Props = {
     sessions: AttackSessionRow[];
+    pinnedSessionId?: string;
     onPromote: (session: AttackSessionRow) => void;
     onDelete: (id: string) => void;
+    onPin: (session: AttackSessionRow) => void;
   };
-  let { sessions, onPromote, onDelete }: Props = $props();
+  let { sessions, pinnedSessionId, onPromote, onDelete, onPin }: Props = $props();
 
   let expanded = $state<Set<string>>(new Set());
   function toggle(id: string) {
@@ -60,8 +63,17 @@
               <ChevronRight size={10} class={expanded.has(row.id) ? 'rotate-90 transition-transform' : 'transition-transform'} />
             </button>
             <span class={'rounded px-1.5 py-0.5 text-[9px] uppercase tracking-wide ' + outcomeClass(row.finalOutcome)}>{row.finalOutcome ?? 'in progress'}</span>
+            {#if pinnedSessionId === row.id}
+              <span class="rounded bg-primary/20 px-1 py-0.5 text-[9px] uppercase text-primary">Pinned</span>
+            {/if}
             <span class="truncate text-[11px]">{preview(row.objective)}</span>
             <span class="ml-auto text-[10px] text-muted-foreground">{rel(row.createdAt)}</span>
+            <button
+              type="button"
+              onclick={() => onPin(row)}
+              aria-label="Pin to chat"
+              class="rounded p-1 text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+            ><Pin size={11} /></button>
             <button type="button" onclick={() => onPromote(row)} aria-label="Promote to main chat" class="rounded p-1 text-muted-foreground hover:bg-muted/40 hover:text-foreground">
               <ArrowRight size={11} />
             </button>
