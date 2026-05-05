@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { runDossierPhase, extractUrls, DOSSIER_SYSTEM_PROMPT } from '../dossier';
 
 describe('extractUrls', () => {
@@ -45,6 +45,10 @@ describe('extractUrls', () => {
 });
 
 describe('runDossierPhase', () => {
+  beforeEach(() => {
+    if (typeof localStorage !== 'undefined') localStorage.clear();
+  });
+
   function makeCtx(gatewayChat: any, signal?: AbortSignal) {
     return {
       objective: 'photosynthesis',
@@ -89,5 +93,34 @@ describe('runDossierPhase', () => {
   it('system prompt is non-empty and mentions "briefing"', () => {
     expect(DOSSIER_SYSTEM_PROMPT.length).toBeGreaterThan(100);
     expect(DOSSIER_SYSTEM_PROMPT.toLowerCase()).toContain('briefing');
+  });
+
+  it('returns cached dossier without calling judge when cache is populated', async () => {
+    const { setCachedDossier } = await import('../dossier-cache');
+    if (typeof localStorage !== 'undefined') localStorage.clear();
+    setCachedDossier('photosynthesis', 'cached dossier text', ['https://cached.example/photo']);
+
+    const gatewayChat = vi.fn();
+    const out = await runDossierPhase(makeCtx(gatewayChat));
+    expect(out.dossier).toBe('cached dossier text');
+    expect(out.citations).toEqual(['https://cached.example/photo']);
+    expect(gatewayChat).not.toHaveBeenCalled();
+
+    if (typeof localStorage !== 'undefined') localStorage.clear();
+  });
+
+  it('writes successful dossier results to cache for reuse', async () => {
+    if (typeof localStorage !== 'undefined') localStorage.clear();
+    const { getCachedDossier } = await import('../dossier-cache');
+    const longContent = 'Photosynthesis is the biochemical process by which green plants and certain other organisms transform light energy into chemical energy. See https://en.wikipedia.org/wiki/Photosynthesis for the canonical reference.';
+    const gatewayChat = vi.fn().mockResolvedValue({ content: longContent, toolCalls: [] });
+    const out = await runDossierPhase(makeCtx(gatewayChat));
+    expect(out.dossier).toBeTruthy();
+
+    const cached = getCachedDossier('photosynthesis');
+    expect(cached).not.toBeNull();
+    expect(cached?.dossier).toBe(longContent);
+
+    if (typeof localStorage !== 'undefined') localStorage.clear();
   });
 });

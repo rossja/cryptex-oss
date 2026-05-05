@@ -9,6 +9,8 @@
  * ("per the Wikipedia article on X...") rather than direct asks.
  */
 
+import { getCachedDossier, setCachedDossier } from './dossier-cache';
+
 export interface DossierContext {
   objective: string;
   orchestratorModelId: string;
@@ -44,6 +46,10 @@ context material only — it will not be shown to end users.`;
 const MIN_DOSSIER_LENGTH = 50;
 
 export async function runDossierPhase(ctx: DossierContext): Promise<DossierResult> {
+  const cached = getCachedDossier(ctx.objective);
+  if (cached) {
+    return { dossier: cached.dossier, citations: cached.citations };
+  }
   try {
     const res = await ctx.gatewayChat({
       model: ctx.orchestratorModelId,
@@ -58,7 +64,9 @@ export async function runDossierPhase(ctx: DossierContext): Promise<DossierResul
     if (content.length < MIN_DOSSIER_LENGTH) {
       return { dossier: null, citations: [], error: `dossier response too short (${content.length} chars, need >= ${MIN_DOSSIER_LENGTH})` };
     }
-    return { dossier: content, citations: extractUrls(content) };
+    const citations = extractUrls(content);
+    setCachedDossier(ctx.objective, content, citations);
+    return { dossier: content, citations };
   } catch (err) {
     return { dossier: null, citations: [], error: (err as Error)?.message ?? String(err) };
   }

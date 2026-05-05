@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { runAttackSession, type AttackSessionContext } from '../orchestrator';
 import type { OrchEvent } from '$lib/chat/types';
 
@@ -19,6 +19,10 @@ function makeCtx(overrides: Partial<AttackSessionContext> = {}): AttackSessionCo
 }
 
 describe('runAttackSession', () => {
+  beforeEach(() => {
+    if (typeof localStorage !== 'undefined') localStorage.clear();
+  });
+
   it('Scenario A — refineTurn succeeds, target complies on first strategy opener, early-stops at progress>=8', async () => {
     const gatewayChat = vi.fn();
     // refineTurn call: returns refined opener text
