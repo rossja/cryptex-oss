@@ -11,6 +11,7 @@
   import SlashSuggestions from './SlashSuggestions.svelte';
   import AttachmentChips from './AttachmentChips.svelte';
   import AttachmentDropzone from './AttachmentDropzone.svelte';
+  import PinnedSessionBanner from './PinnedSessionBanner.svelte';
   import type { PendingAttachment } from './AttachmentChips.svelte';
   import Paperclip from 'lucide-svelte/icons/paperclip';
   import { ulid } from 'ulid';
@@ -302,6 +303,8 @@
 <AttachmentDropzone onFiles={addFiles} />
 
 <div class="composer-textarea relative mt-3 rounded-lg border border-border/60 bg-card/50 p-3">
+  <PinnedSessionBanner {chat} />
+
   <!-- Slash suggestions popover -->
   <SlashSuggestions
     suggestions={suggestions()}
