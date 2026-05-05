@@ -20,11 +20,20 @@ WORKDIR /build
 # Build arguments (must be declared before first use)
 ARG BASE_PATH=""
 ARG PUBLIC_ADSENSE_CLIENT=""
+# Forward-compat for D4 (Supabase auth). When unset, defaults are empty / true
+# — SvelteKit inlines empty PUBLIC_SUPABASE_* and the auth stack falls back
+# to local-only mode (no breaking change to existing deploys).
+ARG PUBLIC_SUPABASE_URL=""
+ARG PUBLIC_SUPABASE_ANON_KEY=""
+ARG PUBLIC_GODMODE_LOCAL_ENABLED="true"
 
 # Expose them as environment variables so Vite's build step inlines them
 # into the static output.
 ENV BASE_PATH=${BASE_PATH} \
-    PUBLIC_ADSENSE_CLIENT=${PUBLIC_ADSENSE_CLIENT}
+    PUBLIC_ADSENSE_CLIENT=${PUBLIC_ADSENSE_CLIENT} \
+    PUBLIC_SUPABASE_URL=${PUBLIC_SUPABASE_URL} \
+    PUBLIC_SUPABASE_ANON_KEY=${PUBLIC_SUPABASE_ANON_KEY} \
+    PUBLIC_GODMODE_LOCAL_ENABLED=${PUBLIC_GODMODE_LOCAL_ENABLED}
 
 # The SvelteKit build reads transformers from ../src/transformers via a Vite
 # alias, so we bring both trees into the build context.

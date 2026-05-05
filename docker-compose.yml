@@ -43,6 +43,12 @@ services:
       args:
         BASE_PATH: "${BASE_PATH:-}"
         PUBLIC_ADSENSE_CLIENT: "${PUBLIC_ADSENSE_CLIENT:-}"
+        # Forward-compat for D4 (Supabase auth). When unset, defaults are
+        # empty / true — the SvelteKit build inlines them and the auth
+        # stack falls back to local-only mode (no breaking change).
+        PUBLIC_SUPABASE_URL: "${PUBLIC_SUPABASE_URL:-}"
+        PUBLIC_SUPABASE_ANON_KEY: "${PUBLIC_SUPABASE_ANON_KEY:-}"
+        PUBLIC_GODMODE_LOCAL_ENABLED: "${PUBLIC_GODMODE_LOCAL_ENABLED:-true}"
 
     environment:
       TZ: "${TZ:-UTC}"
