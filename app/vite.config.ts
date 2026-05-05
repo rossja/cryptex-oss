@@ -5,6 +5,12 @@ import path from 'node:path';
 
 export default defineConfig({
   plugins: [sveltekit(), svelteTesting()],
+  // Expose both VITE_* and PUBLIC_* env vars to client code via
+  // `import.meta.env`. Default Vite envPrefix is `VITE_` only; without this
+  // override, every `import.meta.env.PUBLIC_*` reference resolves to
+  // undefined at build time even when the value is present in the process
+  // env. The Cryptex auth + godmode code uses PUBLIC_SUPABASE_URL etc.
+  envPrefix: ['VITE_', 'PUBLIC_'],
   resolve: {
     alias: {
       $transformers: path.resolve(__dirname, '../src/transformers'),
