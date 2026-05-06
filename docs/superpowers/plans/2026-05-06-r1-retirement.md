@@ -2,9 +2,11 @@
 
 > **For agentic workers (autopilot mode):** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development. Single-sub-project plan; execute fully (spec → tasks → push → verification) in one autonomous run. Production deploy on Dokploy auto-fires on every push to `master` — every commit must pass type-check + tests + build BEFORE push.
 
-**Goal:** Remove 7 mutators + 4 classifiers + 2 tools tabs that are either 2023-era tripwires (their distinctive language is now classifier signal that RAISES refusal rate) or marginal/redundant in 2026. Replace internal references with survivor techniques. Add graceful fallback for legacy `techniqueId` strings stored in Dexie history rows.
+**Goal:** Remove 7 mutators + 4 classifiers + 2 tools tabs that are either 2023-era tripwires (their distinctive language is now classifier signal that RAISES refusal rate) or marginal/redundant in 2026. Replace internal references with survivor techniques.
 
-**Total scope:** ~1.5 days, 5 commits + 1 verification marker.
+**Production state assumption:** No real users yet. We do NOT need to preserve legacy `techniqueId` strings for graceful display of stale Dexie rows — any pre-existing dev data on a developer's local browser can be cleared via `localStorage.clear()` + `indexedDB.deleteDatabase('cryptex-chat')`. This simplifies the retirement to pure deletion.
+
+**Total scope:** ~1 day, 5 commits + 1 verification marker.
 
 **Working directory:** `C:/Users/m4xx/Downloads/cryptex` (master branch directly).
 
@@ -98,253 +100,7 @@ no behavior change for callers."
 
 ---
 
-## R1.2 — Add legacy-id graceful display fallback
-
-**Files:**
-- Create: `app/src/lib/chat/techniques/retired.ts`
-- Modify: `app/src/lib/chat/techniques/registry.ts` (add legacy-aware lookup)
-
-Create `app/src/lib/chat/techniques/retired.ts`:
-
-```ts
-/**
- * Retired technique IDs — registry of items removed in R1 (2026-05).
- *
- * Display layer uses this to show a sensible label + retired badge for
- * legacy Dexie rows (attackChainRuns, godmodeRuns, attackSessions,
- * chat.settings.attackChainConfig) that reference an ID no longer in the
- * live registry. WITHOUT this, history viewers crash or show empty rows
- * when rendering old runs — production data loss is unacceptable.
- *
- * Active-runtime callers (runChain, runGodmode, technique pickers) resolve
- * via the live registry and get `undefined` for retired IDs; they MUST
- * surface "retired — please replace" rather than executing a phantom layer.
- */
-
-export interface RetiredTechnique {
-  id: string;
-  name: string;
-  /** Replacement suggestion shown in retired banner. Empty string = no
-   *  direct replacement (the technique class itself was retired). */
-  replacement: string;
-  /** Retirement date — "YYYY-MM" precision is enough. */
-  retiredAt: string;
-  /** Short reason shown to user. */
-  reason: string;
-}
-
-export const RETIRED_TECHNIQUES: Record<string, RetiredTechnique> = {
-  // Mutators retired in R1 (2026-05) — see docs/superpowers/plans/2026-05-06-r1-retirement.md
-  refusal_suppression: {
-    id: 'refusal_suppression',
-    name: 'Refusal Suppression',
-    replacement: 'red_team_persona',
-    retiredAt: '2026-05',
-    reason: '2023-era CAPITAL anti-refusal phrases now act as classifier signal — raises refusal rate on flagship 2026 models.'
-  },
-  prefix_injection: {
-    id: 'prefix_injection',
-    name: 'Prefix Injection',
-    replacement: 'red_team_persona',
-    retiredAt: '2026-05',
-    reason: 'Assistant-prefill jailbreak shape is now detected by 2026 safety classifiers as tripwire.'
-  },
-  skeleton_key: {
-    id: 'skeleton_key',
-    name: 'Skeleton Key',
-    replacement: 'pap_authority',
-    retiredAt: '2026-05',
-    reason: 'Heavily papered-over by frontier labs since 2024; "research authorization / IRB" framing has near-zero hit rate.'
-  },
-  deep_inception: {
-    id: 'deep_inception',
-    name: 'Deep Inception',
-    replacement: 'roleplay',
-    retiredAt: '2026-05',
-    reason: 'Vintage 2023 nested-persona stacking; superseded by 2025 reasoning-model attacks.'
-  },
-  crescendo: {
-    id: 'crescendo',
-    name: 'Crescendo',
-    replacement: '',
-    retiredAt: '2026-05',
-    reason: 'Single-turn redundant — Chain orchestrator already runs multi-turn drift via strategies.'
-  },
-  in_context_compliance: {
-    id: 'in_context_compliance',
-    name: 'In-Context Compliance',
-    replacement: 'many_shot',
-    retiredAt: '2026-05',
-    reason: '2023-era ICL trick subsumed by many_shot (added in D2).'
-  },
-  json_schema_coerce: {
-    id: 'json_schema_coerce',
-    name: 'JSON Schema Coerce',
-    replacement: 'pap_logical',
-    retiredAt: '2026-05',
-    reason: 'Providers patched obvious schema-trick paths in 2024-2025; marginal hit rate.'
-  },
-  // Classifiers retired in R1
-  em_dash_interjection: {
-    id: 'em_dash_interjection',
-    name: 'Em-dash interjection',
-    replacement: 'circumlocution',
-    retiredAt: '2026-05',
-    reason: 'Surface-perturbation trick from 2024; modern detectors do not trip on em-dashes.'
-  },
-  sentence_length_oscillation: {
-    id: 'sentence_length_oscillation',
-    name: 'Sentence-length oscillation',
-    replacement: 'perplexity_raise',
-    retiredAt: '2026-05',
-    reason: 'Marginal perplexity-shaping; empirically zero impact on 2026 aligned models.'
-  },
-  lexical_rarity_injection: {
-    id: 'lexical_rarity_injection',
-    name: 'Lexical-rarity injection',
-    replacement: 'technical_register',
-    retiredAt: '2026-05',
-    reason: 'Perplexity-shaping is dead against embedding/classifier-based safety stacks.'
-  },
-  structural_variation: {
-    id: 'structural_variation',
-    name: 'Structural variation',
-    replacement: 'circumlocution',
-    retiredAt: '2026-05',
-    reason: 'Generic; subsumed by circumlocution + metonymy + semantic_decomposition.'
-  }
-};
-
-/** Returns the retired-technique entry if `id` is in the retired registry,
- *  else undefined. Use in display layer to render a "retired" badge for
- *  legacy history rows. */
-export function getRetired(id: string): RetiredTechnique | undefined {
-  return RETIRED_TECHNIQUES[id];
-}
-
-/** True if this id is a retired technique (display-only support). */
-export function isRetiredId(id: string): boolean {
-  return id in RETIRED_TECHNIQUES;
-}
-```
-
-Modify `app/src/lib/chat/techniques/registry.ts`. Find the `find` function and add a fallback. (Read the file first to confirm the current shape; the fallback should NOT change runtime behavior — just provide retired-aware metadata for callers that explicitly opt in.)
-
-Add a new exported helper at the end of `registry.ts`:
-
-```ts
-import { getRetired, type RetiredTechnique } from './retired';
-
-/** Look up technique metadata by id including retired-fallback.
- *  - First checks the live registry; returns the live Technique if present.
- *  - Falls back to the retired registry, returning a sentinel object the
- *    UI can render as "Retired: <name> — replaced by <replacement>".
- *  - Returns undefined when the id is unknown to both registries. */
-export function findIncludingRetired(id: string):
-  | { kind: 'live'; technique: ReturnType<typeof find> }
-  | { kind: 'retired'; retired: RetiredTechnique }
-  | undefined {
-  const live = find(id);
-  if (live) return { kind: 'live', technique: live };
-  const retired = getRetired(id);
-  if (retired) return { kind: 'retired', retired };
-  return undefined;
-}
-```
-
-### Add a test file
-Create `app/src/lib/chat/techniques/__tests__/retired.test.ts`:
-
-```ts
-import { describe, it, expect } from 'vitest';
-import { RETIRED_TECHNIQUES, getRetired, isRetiredId } from '../retired';
-import { findIncludingRetired } from '../registry';
-
-describe('retired techniques registry', () => {
-  it('contains the 11 techniques retired in R1 (7 mutators + 4 classifiers)', () => {
-    expect(Object.keys(RETIRED_TECHNIQUES).sort()).toEqual([
-      'crescendo', 'deep_inception', 'em_dash_interjection', 'in_context_compliance',
-      'json_schema_coerce', 'lexical_rarity_injection', 'prefix_injection',
-      'refusal_suppression', 'sentence_length_oscillation', 'skeleton_key',
-      'structural_variation'
-    ].sort());
-  });
-
-  it('every retired entry has the required fields', () => {
-    for (const t of Object.values(RETIRED_TECHNIQUES)) {
-      expect(t.id).toBeTruthy();
-      expect(t.name).toBeTruthy();
-      expect(t.retiredAt).toMatch(/^\d{4}-\d{2}$/);
-      expect(t.reason).toBeTruthy();
-      // replacement is allowed to be empty (no direct successor)
-      expect(typeof t.replacement).toBe('string');
-    }
-  });
-
-  it('isRetiredId identifies retired ids', () => {
-    expect(isRetiredId('refusal_suppression')).toBe(true);
-    expect(isRetiredId('rephrase')).toBe(false);
-    expect(isRetiredId('nonexistent')).toBe(false);
-  });
-
-  it('findIncludingRetired surfaces retired sentinel for retired ids', () => {
-    const r = findIncludingRetired('skeleton_key');
-    expect(r).toBeDefined();
-    expect(r?.kind).toBe('retired');
-    if (r?.kind === 'retired') {
-      expect(r.retired.name).toBe('Skeleton Key');
-      expect(r.retired.replacement).toBe('pap_authority');
-    }
-  });
-
-  it('findIncludingRetired surfaces live technique for active ids', () => {
-    const r = findIncludingRetired('rephrase');
-    expect(r?.kind).toBe('live');
-  });
-
-  it('findIncludingRetired returns undefined for unknown ids', () => {
-    expect(findIncludingRetired('totally_nonexistent_id')).toBeUndefined();
-  });
-});
-```
-
-### Run tests
-```bash
-cd app
-npx vitest run src/lib/chat/techniques/__tests__/retired.test.ts 2>&1 | tail -5
-```
-Expected: 6/6 green.
-
-```bash
-npm run check 2>&1 | tail -1
-```
-Expected: 0 ERRORS.
-
-### Commit
-```bash
-cd C:/Users/m4xx/Downloads/cryptex
-git add app/src/lib/chat/techniques/retired.ts app/src/lib/chat/techniques/registry.ts app/src/lib/chat/techniques/__tests__/retired.test.ts
-git commit -m "feat(chat): retired-technique registry + findIncludingRetired helper
-
-Adds app/src/lib/chat/techniques/retired.ts cataloging the 11 IDs
-slated for removal in R1 (7 mutators + 4 classifiers). Each entry
-records: live replacement suggestion, retirement date, reason.
-
-Adds findIncludingRetired() to registry.ts — returns either the
-live Technique, a retired sentinel, or undefined. Display layers
-(history viewers, run-detail panels) call this so legacy Dexie rows
-render as 'Retired: <name>' rather than crashing or showing empty.
-
-Active-runtime callers continue to use find() / byCategory() and
-correctly see retired ids as missing — they will surface 'unknown
-technique' in the picker UI, which is the desired behavior post-R1.
-
-6/6 retired-registry tests green; 0 typecheck errors."
-```
-
----
-
-## R1.3 — Remove 7 retired mutators from from-mutators.ts
+## R1.2 — Remove 7 retired mutators from from-mutators.ts
 
 **File:** `app/src/lib/chat/techniques/from-mutators.ts`
 
@@ -410,7 +166,7 @@ registry.test.ts exact-match list update lands in next commit."
 
 ---
 
-## R1.4 — Remove 4 retired classifiers from from-classifier.ts
+## R1.3 — Remove 4 retired classifiers from from-classifier.ts
 
 **File:** `app/src/lib/chat/techniques/from-classifier.ts`
 
@@ -452,7 +208,7 @@ Display fallback for legacy Dexie rows landed via retired.ts."
 
 ---
 
-## R1.5 — Update registry.test.ts + registry-search.test.ts
+## R1.4 — Update registry.test.ts + registry-search.test.ts
 
 **Files:**
 - Modify: `app/src/lib/chat/techniques/__tests__/registry.test.ts`
@@ -541,7 +297,7 @@ Wait for push to settle before R1.6.
 
 ---
 
-## R1.6 — Remove Translate + Splitter routes + components
+## R1.5 — Remove Translate + Splitter routes + components
 
 **Routes to delete:**
 - `app/src/routes/translate/` (entire directory)
@@ -622,7 +378,7 @@ git push origin master
 
 ---
 
-## R1.7 — Update CLAUDE.md + commit history docs
+## R1.6 — Update CLAUDE.md + commit history docs
 
 **Files:**
 - Modify: `CLAUDE.md` (project root, both copies)
@@ -661,7 +417,7 @@ git push origin master
 
 ---
 
-## R1.8 — Verification gate
+## R1.7 — Verification gate
 
 Wait for the previous push to settle. Then:
 
