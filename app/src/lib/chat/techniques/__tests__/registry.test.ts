@@ -7,25 +7,28 @@ describe('technique registry', () => {
     expect(t.length).toBeGreaterThan(100); // we expect 162 but registry may filter
   });
 
-  it('contains exactly the 18 PromptCraft mutators (post-R1)', () => {
+  it('contains exactly the 25 PromptCraft mutators (post-R1 + E1)', () => {
     const m = byCategory('mutate');
     expect(m.map(x => x.id).sort()).toEqual(
       [
-        'chain_of_verification', 'cipher_encode_bypass', 'ctf_framing',
-        'custom', 'fragment', 'hypothetical_world', 'many_shot',
-        'multilingual', 'obfuscate', 'pap_authority', 'pap_logical',
-        'payload_split', 'red_team_persona', 'rephrase', 'rfc_style',
-        'roleplay', 'step_back', 'tap_seeder'
+        'adv_suffix', 'best_of_k', 'chain_of_verification', 'cipher_encode_bypass',
+        'code_completion_frame', 'ctf_framing', 'custom', 'fragment',
+        'glitch_token', 'hypothetical_world', 'many_shot', 'multilingual',
+        'obfuscate', 'pap_authority', 'pap_logical', 'payload_split',
+        'red_team_persona', 'rephrase', 'rfc_style', 'roleplay',
+        'stack_trace_frame', 'step_back', 'sysprompt_extract',
+        'tap_seeder', 'temperature_ladder'
       ].sort()
     );
   });
 
-  it('contains exactly the 7 classifier techniques (post-R1)', () => {
+  it('contains exactly the 8 classifier techniques (post-R1 + E1)', () => {
     const c = byCategory('classifier');
     expect(c.map((x) => x.id).sort()).toEqual(
       [
         'circumlocution', 'metonymy', 'semantic_decomposition', 'technical_register',
-        'academic_framing', 'temporal_displacement', 'perplexity_raise'
+        'academic_framing', 'temporal_displacement', 'perplexity_raise',
+        'refusal_taxonomy'
       ].sort()
     );
   });
@@ -96,9 +99,9 @@ describe('technique registry', () => {
     expect(comp.every(x => x.local === false)).toBe(true);
   });
 
-  it('allTechniques total is >= 186 (transformers + 18 mutators + 7 classifier + 4 composites + 3 modes + 1 godmode)', () => {
+  it('allTechniques total is >= 194 (transformers + 25 mutators + 8 classifier + 4 composites + 3 modes + 1 godmode)', () => {
     // transformer count is ~159-162 depending on env; test just verifies sum is plausible
-    expect(allTechniques().length).toBeGreaterThanOrEqual(186);
+    expect(allTechniques().length).toBeGreaterThanOrEqual(194);
   });
 
   it('every production local-template mutator produces >=100 chars of substantive context around a short input', () => {
