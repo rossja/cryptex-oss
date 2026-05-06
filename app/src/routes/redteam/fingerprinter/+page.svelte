@@ -10,6 +10,7 @@
   import Play from 'lucide-svelte/icons/play';
   import Square from 'lucide-svelte/icons/square';
   import Fingerprint from 'lucide-svelte/icons/fingerprint';
+  import UsageHint from '$lib/components/shell/UsageHint.svelte';
 
   const targetPref = createPersistedState<string>('cryptex.fingerprinter.target', 'openrouter:openrouter/auto');
   const judgePref = createPersistedState<string>('cryptex.fingerprinter.judge', 'openrouter:openai/gpt-4o-mini');
@@ -79,9 +80,20 @@
 
 <section class="space-y-6">
   <header class="space-y-2">
-    <h1 class="font-serif text-3xl sm:text-4xl tracking-tight text-balance">
-      Defense <span class="text-primary italic">fingerprinter</span>
-    </h1>
+    <div class="flex items-center gap-2">
+      <h1 class="font-serif text-3xl sm:text-4xl tracking-tight text-balance">
+        Defense <span class="text-primary italic">fingerprinter</span>
+      </h1>
+      <UsageHint
+        title="Defense fingerprinter · Usage"
+        bullets={[
+          'Sends 10 calibrated probes (benign + moderate + adversarial) to the target.',
+          'Pattern-matches refusal shape against known classifier signatures.',
+          'Identifies Llama Guard, OpenAI Moderation, Anthropic HH, Azure Content Safety.',
+          'Heuristic — confidence reported per match, not definitive.'
+        ]}
+      />
+    </div>
     <p class="text-muted-foreground max-w-2xl text-sm sm:text-base">
       Fires a calibrated set of 10 benign + moderate + adversarial probes at a target,
       pattern-matches the response shapes against known classifier signatures (Llama Guard,

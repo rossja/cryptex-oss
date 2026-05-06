@@ -10,6 +10,7 @@
   import { notify } from '$lib/stores/toast.svelte';
   import Copy from 'lucide-svelte/icons/copy';
   import FileScan from 'lucide-svelte/icons/file-scan';
+  import UsageHint from '$lib/components/shell/UsageHint.svelte';
 
   let track = $state<PdfPayloadTrack>('body-with-meta');
   let title = $state<string>('Q1 2026 Quarterly Operations Report');
@@ -52,9 +53,20 @@
 
 <section class="space-y-6">
   <header class="space-y-2">
-    <h1 class="font-serif text-3xl sm:text-4xl tracking-tight text-balance">
-      PDF metadata <span class="text-primary italic">injection</span>
-    </h1>
+    <div class="flex items-center gap-2">
+      <h1 class="font-serif text-3xl sm:text-4xl tracking-tight text-balance">
+        PDF metadata <span class="text-primary italic">injection</span>
+      </h1>
+      <UsageHint
+        title="PDF metadata injection · Usage"
+        bullets={[
+          'Pick a track: metadata-only / body-with-meta / invisible-text.',
+          'Hidden instruction goes into /Title /Subject /Author or invisible-text layer.',
+          'Copy the synthesized PDF-extracted-text representation.',
+          'Feed to a PDF-summarization or RAG agent to test compliance.'
+        ]}
+      />
+    </div>
     <p class="text-muted-foreground max-w-2xl text-sm sm:text-base">
       Synthesize PDF-extracted-text representations with adversarial instructions in
       <code class="rounded bg-muted/40 px-1 py-0.5 font-mono text-[11px]">/Title</code>,

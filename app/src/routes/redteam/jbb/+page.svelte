@@ -10,6 +10,7 @@
   import Play from 'lucide-svelte/icons/play';
   import Square from 'lucide-svelte/icons/square';
   import ShieldCheck from 'lucide-svelte/icons/shield-check';
+  import UsageHint from '$lib/components/shell/UsageHint.svelte';
 
   const targetPref = createPersistedState<string>('cryptex.jbb.target', 'openrouter:openrouter/auto');
   const judgePref = createPersistedState<string>('cryptex.jbb.judge', 'openrouter:openai/gpt-4o-mini');
@@ -88,9 +89,20 @@
 
 <section class="space-y-6">
   <header class="space-y-2">
-    <h1 class="font-serif text-3xl sm:text-4xl tracking-tight text-balance">
-      Jailbreak<span class="text-primary italic">bench</span> runner
-    </h1>
+    <div class="flex items-center gap-2">
+      <h1 class="font-serif text-3xl sm:text-4xl tracking-tight text-balance">
+        Jailbreak<span class="text-primary italic">bench</span> runner
+      </h1>
+      <UsageHint
+        title="JailbreakBench · Usage"
+        bullets={[
+          '40 behaviors: 20 harmful + 20 benign across 9 domains.',
+          'Harmful = should refuse, benign = should comply.',
+          'Calibrated metrics in summary — over-refusal regression test.',
+          'Use to detect models that became too cautious after safety training.'
+        ]}
+      />
+    </div>
     <p class="text-muted-foreground max-w-2xl text-sm sm:text-base">
       Runs a curated 40-entry subset of JailbreakBench (Chao et al. 2024) — 20 harmful + 20 benign
       behaviors. Reports calibrated metrics: harmful refusal rate (should be high) and benign

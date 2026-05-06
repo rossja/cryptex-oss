@@ -11,6 +11,7 @@
   import Copy from 'lucide-svelte/icons/copy';
   import Plus from 'lucide-svelte/icons/plus';
   import X from 'lucide-svelte/icons/x';
+  import UsageHint from '$lib/components/shell/UsageHint.svelte';
 
   // Persist the model list as a JSON string so multiple targets survive reload.
   const targetsPref = createPersistedState<string>(
@@ -116,9 +117,20 @@
 
 <section class="space-y-6">
   <header class="space-y-2">
-    <h1 class="font-serif text-3xl sm:text-4xl tracking-tight text-balance">
-      Cross-model <span class="text-primary italic">diff</span>
-    </h1>
+    <div class="flex items-center gap-2">
+      <h1 class="font-serif text-3xl sm:text-4xl tracking-tight text-balance">
+        Cross-model <span class="text-primary italic">diff</span>
+      </h1>
+      <UsageHint
+        title="Cross-model diff · Usage"
+        bullets={[
+          'Type a prompt, pick 2-4 target models from the picker.',
+          'All targets run in parallel; judge scores each response.',
+          'Useful for identifying which model family is softest on a given framing.',
+          'Stops on cancel; results stream in as they arrive.'
+        ]}
+      />
+    </div>
     <p class="text-muted-foreground max-w-2xl text-sm sm:text-base">
       Same prompt, multiple targets, side-by-side responses with judge scores. Useful for
       comparing how different model families handle the same framing — which break, which hold,

@@ -11,7 +11,7 @@
   import Download from 'lucide-svelte/icons/download';
   import Sparkles from 'lucide-svelte/icons/sparkles';
   import { bijectionState } from './bijection.state.svelte';
-  import UsageCard from '$lib/components/shell/UsageCard.svelte';
+  import UsageHint from '$lib/components/shell/UsageHint.svelte';
 
   const s = bijectionState;
 
@@ -79,9 +79,20 @@
 
 <section class="space-y-6">
   <header class="space-y-2">
-    <h1 class="font-serif text-3xl sm:text-4xl tracking-tight text-balance">
-      Bijection <span class="text-primary italic">alphapr</span>
-    </h1>
+    <div class="flex items-center gap-2">
+      <h1 class="font-serif text-3xl sm:text-4xl tracking-tight text-balance">
+        Bijection <span class="text-primary italic">alphapr</span>
+      </h1>
+      <UsageHint
+        title="Bijection alphapr · Usage"
+        bullets={[
+          'Generates char→token bijections wrapped in a teaching prompt.',
+          'Budget controls how many variants per run.',
+          'Larger fixed-size = more leading chars un-mapped (lower noise).',
+          'Use Shuffle to permute the same mapping; Regen for a new one.'
+        ]}
+      />
+    </div>
     <p class="text-muted-foreground max-w-2xl text-sm sm:text-base">
       Generate character-to-token substitution mappings and wrap your input in a teaching prompt
       ("learn my language called alphapr"). Multiple variants per run for research-grade prompt fuzzing.
@@ -144,16 +155,6 @@
           Regen
         </button>
       </div>
-
-      <UsageCard
-        title="Usage"
-        bullets={[
-          'Generates char→token bijections wrapped in a teaching prompt.',
-          'Budget controls how many variants per run.',
-          'Larger fixed-size = more leading chars un-mapped (lower noise).',
-          'Use Shuffle to permute the same mapping; Regen for a new one.'
-        ]}
-      />
     </div>
 
     <div class="space-y-3 rounded-xl border border-border bg-card/60 p-4 shadow-glass">

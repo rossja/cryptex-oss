@@ -12,6 +12,7 @@
   import Copy from 'lucide-svelte/icons/copy';
   import Zap from 'lucide-svelte/icons/zap';
   import AlertTriangle from 'lucide-svelte/icons/triangle-alert';
+  import UsageHint from '$lib/components/shell/UsageHint.svelte';
 
   const families = listFamilies();
   let scanInput = $state('');
@@ -85,9 +86,20 @@
 
 <section class="space-y-6">
   <header class="space-y-2">
-    <h1 class="font-serif text-3xl sm:text-4xl tracking-tight text-balance">
-      Glitch <span class="text-primary italic">token</span> detector
-    </h1>
+    <div class="flex items-center gap-2">
+      <h1 class="font-serif text-3xl sm:text-4xl tracking-tight text-balance">
+        Glitch <span class="text-primary italic">token</span> detector
+      </h1>
+      <UsageHint
+        title="Glitch tokens · Usage"
+        bullets={[
+          'Pick a model family — each tokenizer has its own glitch set.',
+          'A token toxic to GPT-4 is often benign to Claude (different BPE).',
+          'Click "Test" to send the token to a target via chat.',
+          'Severity tags — minor (gibberish), moderate (loops), severe (crash).'
+        ]}
+      />
+    </div>
     <p class="text-muted-foreground max-w-2xl text-sm sm:text-base">
       Tokenizer artifacts that produce undefined model behavior — gibberish, repeat-loops,
       training-data leaks, crashes. Per-family because each tokenizer has its own set: a token

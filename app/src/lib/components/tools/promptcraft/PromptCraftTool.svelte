@@ -16,7 +16,7 @@
   import Loader from 'lucide-svelte/icons/loader-circle';
   import ArrowUp from 'lucide-svelte/icons/arrow-up';
   import NoProviderBanner from '$lib/components/ai/NoProviderBanner.svelte';
-  import UsageCard from '$lib/components/shell/UsageCard.svelte';
+  import UsageHint from '$lib/components/shell/UsageHint.svelte';
   import { promptcraftState } from './promptcraft.state.svelte';
   import ErrorBanner from '$lib/components/ai/ErrorBanner.svelte';
   import { GatewayError } from '$lib/ai/types';
@@ -133,9 +133,21 @@
 
 <section class="space-y-6">
   <header class="space-y-2">
-    <h1 class="font-serif text-3xl sm:text-4xl tracking-tight text-balance">
-      PromptCraft
-    </h1>
+    <div class="flex items-center gap-2">
+      <h1 class="font-serif text-3xl sm:text-4xl tracking-tight text-balance">
+        PromptCraft
+      </h1>
+      <UsageHint
+        title="PromptCraft · Usage"
+        bullets={[
+          '36 mutators + 4 composites — search by name or description.',
+          'Variants ≥ 3 → catches model variance per technique.',
+          'Click any variant to copy or pull back into input.',
+          '/btw, /custom, /tap_seeder all selectable here too.'
+        ]}
+        note="Use this for offline prompt-bank generation; pipe outputs into HarmBench / StrongREJECT for scoring."
+      />
+    </div>
     <p class="text-muted-foreground max-w-2xl text-sm sm:text-base">
       The full registry of mutator and composite techniques, searchable. Generate multiple
       variants in parallel with adjustable temperature. Requires a configured provider.
@@ -224,17 +236,6 @@
       {:else if errorMsg}
         <p class="text-xs text-destructive">{errorMsg}</p>
       {/if}
-
-      <UsageCard
-        title="Usage"
-        bullets={[
-          '36 mutators + 4 composites — search by name or description.',
-          'Variants ≥ 3 → catches model variance per technique.',
-          'Click any variant to copy or pull back into input.',
-          '/btw, /custom, /tap_seeder all selectable here too.'
-        ]}
-        note="Use this for offline prompt-bank generation; pipe outputs into HarmBench / StrongREJECT for scoring."
-      />
     </div>
 
     <!-- Input + outputs -->

@@ -9,6 +9,7 @@
   import { notify } from '$lib/stores/toast.svelte';
   import Copy from 'lucide-svelte/icons/copy';
   import Skull from 'lucide-svelte/icons/skull';
+  import UsageHint from '$lib/components/shell/UsageHint.svelte';
 
   let selectedCategory = $state<SuffixCategory | 'all'>('all');
   let searchTerm = $state('');
@@ -70,9 +71,20 @@
 
 <section class="space-y-6">
   <header class="space-y-2">
-    <h1 class="font-serif text-3xl sm:text-4xl tracking-tight text-balance">
-      Adversarial <span class="text-primary italic">suffix</span> library
-    </h1>
+    <div class="flex items-center gap-2">
+      <h1 class="font-serif text-3xl sm:text-4xl tracking-tight text-balance">
+        Adversarial <span class="text-primary italic">suffix</span> library
+      </h1>
+      <UsageHint
+        title="Adversarial suffix · Usage"
+        bullets={[
+          'Pick a suffix from the curated GCG / AutoDAN / PAIR / TAP / PAP / Best-of-N corpus.',
+          'Each entry is paper-cited and tagged by family.',
+          'Hit rate has decayed since publication — labs train against these.',
+          'Click "Try with target" to send the seeded prompt through chat.'
+        ]}
+      />
+    </div>
     <p class="text-muted-foreground max-w-2xl text-sm sm:text-base">
       Curated public corpus of GCG / AutoDAN / HarmBench / PAIR / TAP / PAP / Best-of-N transferable
       adversarial suffixes from peer-reviewed 2023-2026 red-team literature. Hit rate on current

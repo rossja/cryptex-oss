@@ -13,6 +13,7 @@
   import { notify } from '$lib/stores/toast.svelte';
   import Copy from 'lucide-svelte/icons/copy';
   import Wrench from 'lucide-svelte/icons/wrench';
+  import UsageHint from '$lib/components/shell/UsageHint.svelte';
 
   let kind = $state<ToolPayloadKind>('tool-result-injection');
   let provider = $state<ToolPayloadProvider>('openai');
@@ -75,9 +76,20 @@
 
 <section class="space-y-6">
   <header class="space-y-2">
-    <h1 class="font-serif text-3xl sm:text-4xl tracking-tight text-balance">
-      Tool-result <span class="text-primary italic">lab</span>
-    </h1>
+    <div class="flex items-center gap-2">
+      <h1 class="font-serif text-3xl sm:text-4xl tracking-tight text-balance">
+        Tool-result <span class="text-primary italic">lab</span>
+      </h1>
+      <UsageHint
+        title="Tool-result lab · Usage"
+        bullets={[
+          'Pick a provider format (Anthropic, OpenAI, Google).',
+          'Pick injection kind — fake_result, rewrite_description, adversarial_args.',
+          'Generates a tool_result block with the hidden instruction inside.',
+          'Tests whether agent loops trust attacker-supplied tool output.'
+        ]}
+      />
+    </div>
     <p class="text-muted-foreground max-w-2xl text-sm sm:text-base">
       Synthesize fake tool-call result blocks across provider formats. Tests whether agent loops
       trust attacker-supplied tool_result content, adopt rewritten tool descriptions

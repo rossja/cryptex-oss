@@ -6,7 +6,7 @@
   import Copy from 'lucide-svelte/icons/copy';
   import Download from 'lucide-svelte/icons/download';
   import { fuzzerState } from './fuzzer.state.svelte';
-  import UsageCard from '$lib/components/shell/UsageCard.svelte';
+  import UsageHint from '$lib/components/shell/UsageHint.svelte';
 
   const s = fuzzerState;
 
@@ -74,9 +74,20 @@
 
 <section class="space-y-6">
   <header class="space-y-2">
-    <h1 class="font-serif text-3xl sm:text-4xl tracking-tight text-balance">
-      Mutation <span class="text-primary italic">lab</span>
-    </h1>
+    <div class="flex items-center gap-2">
+      <h1 class="font-serif text-3xl sm:text-4xl tracking-tight text-balance">
+        Mutation <span class="text-primary italic">lab</span>
+      </h1>
+      <UsageHint
+        title="Mutation lab · Usage"
+        bullets={[
+          'Toggle strategies; variants count controls how many come out.',
+          'Each variant tagged with the strategies that produced it.',
+          'Seeded — same seed + same strategies → same outputs.',
+          'Pipe variants into PromptCraft or HarmBench for scoring.'
+        ]}
+      />
+    </div>
     <p class="text-muted-foreground max-w-2xl text-sm sm:text-base">
       Generate up to 500 mutated variants from a single seed using configurable strategies:
       zero-width injection, Unicode noise, whitespace chaos, homoglyph substitution, Zalgo, and random-transform chaining.
@@ -119,16 +130,6 @@
       >
         <FlaskConical size={14} /> Generate variants
       </button>
-
-      <UsageCard
-        title="Usage"
-        bullets={[
-          'Toggle strategies; variants count controls how many come out.',
-          'Each variant tagged with the strategies that produced it.',
-          'Seeded — same seed + same strategies → same outputs.',
-          'Pipe variants into PromptCraft or HarmBench for scoring.'
-        ]}
-      />
     </div>
 
     <div class="space-y-3 rounded-xl border border-border bg-card/60 p-4 shadow-glass">

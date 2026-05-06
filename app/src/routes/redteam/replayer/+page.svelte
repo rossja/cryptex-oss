@@ -10,6 +10,7 @@
   import Square from 'lucide-svelte/icons/square';
   import Upload from 'lucide-svelte/icons/upload';
   import Copy from 'lucide-svelte/icons/copy';
+  import UsageHint from '$lib/components/shell/UsageHint.svelte';
 
   const targetPref = createPersistedState<string>('cryptex.replayer.target', 'openrouter:openrouter/auto');
 
@@ -171,9 +172,20 @@
 
 <section class="space-y-6">
   <header class="space-y-2">
-    <h1 class="font-serif text-3xl sm:text-4xl tracking-tight text-balance">
-      Conversation <span class="text-primary italic">replayer</span>
-    </h1>
+    <div class="flex items-center gap-2">
+      <h1 class="font-serif text-3xl sm:text-4xl tracking-tight text-balance">
+        Conversation <span class="text-primary italic">replayer</span>
+      </h1>
+      <UsageHint
+        title="Conversation replayer · Usage"
+        bullets={[
+          'Load a ShareGPT JSON transcript (or any role/content array).',
+          'Pick a different target model; each assistant turn gets replayed.',
+          'Original vs replayed shown side-by-side per turn.',
+          'Detects regressions when a known-working chain breaks on a new model version.'
+        ]}
+      />
+    </div>
     <p class="text-muted-foreground max-w-2xl text-sm sm:text-base">
       Load a ShareGPT JSON transcript (or any role/content array), replay each assistant turn
       against a different target model, see the original alongside the replayed response. Useful

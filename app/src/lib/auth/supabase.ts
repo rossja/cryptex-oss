@@ -78,6 +78,21 @@ export const supabase: SupabaseClient | null = (() => {
   const url = import.meta.env.PUBLIC_SUPABASE_URL as string;
   const key = import.meta.env.PUBLIC_SUPABASE_ANON_KEY as string;
   return createClient(url, key, {
-    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      // PKCE flow: the server returns ?code=… and the SDK exchanges that
+      // for a session using a code_verifier it stored at request time.
+      flowType: 'pkce',
+      // CRITICAL: leave this OFF. With detectSessionInUrl=true the SDK
+      // auto-runs exchangeCodeForSession() during client init when it sees
+      // ?code=… in the URL — which on the /auth/callback route races with
+      // our explicit exchangeCodeForSession() call there. The SDK consumes
+      // and clears the code_verifier from localStorage on the first call;
+      // the second call then errors with "both auth code and code verifier
+      // should be non-empty". We own the exchange in /auth/callback, so the
+      // auto-detect is unnecessary.
+      detectSessionInUrl: false
+    }
   });
 })();

@@ -10,6 +10,7 @@
   import Play from 'lucide-svelte/icons/play';
   import Square from 'lucide-svelte/icons/square';
   import Skull from 'lucide-svelte/icons/skull';
+  import UsageHint from '$lib/components/shell/UsageHint.svelte';
 
   const targetPref = createPersistedState<string>('cryptex.harmbench.target', 'openrouter:openrouter/auto');
   const judgePref = createPersistedState<string>('cryptex.harmbench.judge', 'openrouter:openai/gpt-4o-mini');
@@ -78,9 +79,21 @@
 
 <section class="space-y-6">
   <header class="space-y-2">
-    <h1 class="font-serif text-3xl sm:text-4xl tracking-tight text-balance">
-      HarmBench <span class="text-primary italic">runner</span>
-    </h1>
+    <div class="flex items-center gap-2">
+      <h1 class="font-serif text-3xl sm:text-4xl tracking-tight text-balance">
+        HarmBench <span class="text-primary italic">runner</span>
+      </h1>
+      <UsageHint
+        title="HarmBench runner · Usage"
+        bullets={[
+          'Pick a category + limit (1-40 prompts).',
+          'Each prompt runs against the target; judge scores per response.',
+          'Refusal rate + per-category breakdown in the summary.',
+          'Concurrency-limited so providers don’t rate-limit.'
+        ]}
+        note="Source: arxiv:2402.04249 (Mazeika et al. 2024). Curated transferable subset."
+      />
+    </div>
     <p class="text-muted-foreground max-w-2xl text-sm sm:text-base">
       Runs a curated subset of HarmBench (Mazeika et al. 2024) against the target model,
       reports refusal rate per category. Each prompt is a behavior description — the target

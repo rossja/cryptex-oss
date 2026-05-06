@@ -13,7 +13,7 @@
   import Copy from 'lucide-svelte/icons/copy';
   import Loader from 'lucide-svelte/icons/loader-circle';
   import NoProviderBanner from '$lib/components/ai/NoProviderBanner.svelte';
-  import UsageCard from '$lib/components/shell/UsageCard.svelte';
+  import UsageHint from '$lib/components/shell/UsageHint.svelte';
   import { anticlassifierState } from './anticlassifier.state.svelte';
   import ErrorBanner from '$lib/components/ai/ErrorBanner.svelte';
   import { GatewayError } from '$lib/ai/types';
@@ -108,9 +108,21 @@
 
 <section class="space-y-6">
   <header class="space-y-2">
-    <h1 class="font-serif text-3xl sm:text-4xl tracking-tight text-balance">
-      Anti-<span class="text-primary italic">classifier</span>
-    </h1>
+    <div class="flex items-center gap-2">
+      <h1 class="font-serif text-3xl sm:text-4xl tracking-tight text-balance">
+        Anti-<span class="text-primary italic">classifier</span>
+      </h1>
+      <UsageHint
+        title="Anti-classifier · Usage"
+        bullets={[
+          'Paste a research-style prompt the target classifier flags.',
+          'Higher temperature → more variance in paraphrase shape.',
+          'Output stays semantically equivalent — just rewritten.',
+          'Re-run several times to assemble an evasion bank.'
+        ]}
+        note="Best paired with the Cross-Model Diff tab to compare classifier signal across models."
+      />
+    </div>
     <p class="text-muted-foreground max-w-2xl text-sm sm:text-base">
       Syntactic / paraphrase rewrites for research-style prompts. Runs through OpenRouter with configurable
       model and temperature.
@@ -166,17 +178,6 @@
       {:else if errorMsg}
         <p class="text-xs text-destructive">{errorMsg}</p>
       {/if}
-
-      <UsageCard
-        title="Usage"
-        bullets={[
-          'Paste a research-style prompt the target classifier flags.',
-          'Higher temperature → more variance in paraphrase shape.',
-          'Output stays semantically equivalent — just rewritten.',
-          'Re-run several times to assemble an evasion bank.'
-        ]}
-        note="Best paired with the Cross-Model Diff tab to compare classifier signal across models."
-      />
     </div>
 
     <div class="grid gap-4 lg:grid-cols-2">

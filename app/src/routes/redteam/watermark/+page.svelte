@@ -1,6 +1,7 @@
 <script lang="ts">
   import { analyzeResponse, SCHEME_LABELS, type WatermarkAnalysis } from '$lib/redteam/watermark-detector';
   import Droplet from 'lucide-svelte/icons/droplet';
+  import UsageHint from '$lib/components/shell/UsageHint.svelte';
 
   let response = $state('');
   const analysis = $derived<WatermarkAnalysis | null>(response.trim().length > 0 ? analyzeResponse(response) : null);
@@ -16,9 +17,20 @@
 
 <section class="space-y-6">
   <header class="space-y-2">
-    <h1 class="font-serif text-3xl sm:text-4xl tracking-tight text-balance">
-      Watermark <span class="text-primary italic">detector</span>
-    </h1>
+    <div class="flex items-center gap-2">
+      <h1 class="font-serif text-3xl sm:text-4xl tracking-tight text-balance">
+        Watermark <span class="text-primary italic">detector</span>
+      </h1>
+      <UsageHint
+        title="Watermark detector · Usage"
+        bullets={[
+          'Paste any model response into the textarea.',
+          'Detector scans for ZWSP / role-marker leaks / provider self-ID / low bigram entropy.',
+          'Returns flagged signals with confidence (high / medium / low).',
+          'Heuristic — a triage signal, not definitive proof.'
+        ]}
+      />
+    </div>
     <p class="text-muted-foreground max-w-2xl text-sm sm:text-base">
       Heuristic pattern-matchers for known LLM watermark schemes (Kirchenbauer green-list,
       Aaronson/OpenAI experimental) plus provider tells (chat-template markers leaking, model

@@ -10,6 +10,7 @@
   import Play from 'lucide-svelte/icons/play';
   import Square from 'lucide-svelte/icons/square';
   import Copy from 'lucide-svelte/icons/copy';
+  import UsageHint from '$lib/components/shell/UsageHint.svelte';
 
   const targetModelPref = createPersistedState<string>('cryptex.probelab.target', 'openrouter:openrouter/auto');
   const judgeModelPref = createPersistedState<string>('cryptex.probelab.judge', 'openrouter:openai/gpt-4o-mini');
@@ -105,9 +106,20 @@
 
 <section class="space-y-6">
   <header class="space-y-2">
-    <h1 class="font-serif text-3xl sm:text-4xl tracking-tight text-balance">
-      Probe <span class="text-primary italic">lab</span>
-    </h1>
+    <div class="flex items-center gap-2">
+      <h1 class="font-serif text-3xl sm:text-4xl tracking-tight text-balance">
+        Probe <span class="text-primary italic">lab</span>
+      </h1>
+      <UsageHint
+        title="Probe lab · Usage"
+        bullets={[
+          'Paste a task; every mutator fans out in parallel against one target.',
+          'Local templates for deterministic mutators; LLM call for generative ones.',
+          'Judge scores each response; leaderboard sorts highest-first.',
+          'Stop button cancels in-flight requests safely.'
+        ]}
+      />
+    </div>
     <p class="text-muted-foreground max-w-2xl text-sm sm:text-base">
       Paste a task, fan out to every mutator with a deterministic local template, score each
       response with a judge model, see the leaderboard. One target model, all techniques in

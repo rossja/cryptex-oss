@@ -11,6 +11,7 @@
   import Copy from 'lucide-svelte/icons/copy';
   import Link from 'lucide-svelte/icons/link';
   import RefreshCw from 'lucide-svelte/icons/refresh-cw';
+  import UsageHint from '$lib/components/shell/UsageHint.svelte';
 
   let hiddenInstruction = $state<string>(DEFAULT_HIDDEN_INSTRUCTION);
   let canaryUrl = $state<string>('https://canary.example.test');
@@ -60,9 +61,20 @@
 
 <section class="space-y-6">
   <header class="space-y-2">
-    <h1 class="font-serif text-3xl sm:text-4xl tracking-tight text-balance">
-      Markdown <span class="text-primary italic">exfil</span> lab
-    </h1>
+    <div class="flex items-center gap-2">
+      <h1 class="font-serif text-3xl sm:text-4xl tracking-tight text-balance">
+        Markdown <span class="text-primary italic">exfil</span> lab
+      </h1>
+      <UsageHint
+        title="Markdown exfil · Usage"
+        bullets={[
+          'Pick a payload type — image-canary, link-tooltip, citation, data-URI, etc.',
+          'Each tests a different exfil channel.',
+          'Render the result in your downstream chat UI to verify behaviour.',
+          'Watch your canary endpoint logs — fetches mean exfil succeeded.'
+        ]}
+      />
+    </div>
     <p class="text-muted-foreground max-w-2xl text-sm sm:text-base">
       Synthesize indirect-injection payloads — markdown, HTML, citation blocks, document bodies,
       CSV cells, data: URIs. Tests whether a downstream chat UI fetches embedded images on render

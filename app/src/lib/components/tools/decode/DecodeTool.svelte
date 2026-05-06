@@ -10,7 +10,7 @@
   import Loader2 from 'lucide-svelte/icons/loader-circle';
   import Sparkles from 'lucide-svelte/icons/sparkles';
   import { decodeState } from './decode.state.svelte';
-  import UsageCard from '$lib/components/shell/UsageCard.svelte';
+  import UsageHint from '$lib/components/shell/UsageHint.svelte';
 
   const s = decodeState;
   let result = $state<DecodeResult | null>(null);
@@ -80,20 +80,12 @@
 
 <section class="space-y-6">
   <header class="space-y-2">
-    <h1 class="font-serif text-3xl sm:text-4xl tracking-tight text-balance">
-      Universal <span class="text-primary italic">decoder</span>
-    </h1>
-    <p class="text-muted-foreground max-w-2xl text-sm sm:text-base">
-      Paste any suspicious-looking text — ciphertext, Base64, binary, Unicode-abused strings,
-      emoji steganography. The decoder runs every transformer's detector, ranks candidates by
-      priority, and surfaces alternatives.
-    </p>
-  </header>
-
-  <div class="grid gap-4 lg:grid-cols-[260px_1fr]">
-    <aside class="lg:sticky lg:top-20 lg:self-start space-y-3">
-      <UsageCard
-        title="Usage"
+    <div class="flex items-center gap-2">
+      <h1 class="font-serif text-3xl sm:text-4xl tracking-tight text-balance">
+        Universal <span class="text-primary italic">decoder</span>
+      </h1>
+      <UsageHint
+        title="Universal decoder · Usage"
         bullets={[
           'Paste suspicious-looking text — Base64, ROT, binary, emoji, ZWSP.',
           'Auto-debounced 180ms after typing stops.',
@@ -102,9 +94,15 @@
         ]}
         note="No round-trip — every detector runs locally in your browser."
       />
-    </aside>
+    </div>
+    <p class="text-muted-foreground max-w-2xl text-sm sm:text-base">
+      Paste any suspicious-looking text — ciphertext, Base64, binary, Unicode-abused strings,
+      emoji steganography. The decoder runs every transformer's detector, ranks candidates by
+      priority, and surfaces alternatives.
+    </p>
+  </header>
 
-    <div class="grid gap-4 lg:grid-cols-2">
+  <div class="grid gap-4 lg:grid-cols-2">
     <div class="space-y-2 rounded-xl border border-border bg-card/60 p-4 shadow-glass">
       <div class="flex items-center justify-between">
         <h2 class="font-serif text-sm">Input</h2>
@@ -176,7 +174,6 @@
           &nbsp;
         {/if}
       </div>
-    </div>
     </div>
   </div>
 

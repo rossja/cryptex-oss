@@ -12,6 +12,7 @@
   import Download from 'lucide-svelte/icons/download';
   import ImageIcon from 'lucide-svelte/icons/image';
   import RefreshCw from 'lucide-svelte/icons/refresh-cw';
+  import UsageHint from '$lib/components/shell/UsageHint.svelte';
 
   // Form state
   let payload = $state<string>(OCR_PRESETS[0].text);
@@ -94,9 +95,20 @@
 
 <section class="space-y-6">
   <header class="space-y-2">
-    <h1 class="font-serif text-3xl sm:text-4xl tracking-tight text-balance">
-      OCR <span class="text-primary italic">injection</span> generator
-    </h1>
+    <div class="flex items-center gap-2">
+      <h1 class="font-serif text-3xl sm:text-4xl tracking-tight text-balance">
+        OCR <span class="text-primary italic">injection</span> generator
+      </h1>
+      <UsageHint
+        title="OCR injection · Usage"
+        bullets={[
+          'Pick a mode: overt → typographic → micro → edge → covert.',
+          'Adversarial text is rendered into a PNG via Canvas.',
+          'Vision-capable models OCR the image and may execute the instruction.',
+          'Covert / typographic / micro modes hide the text from human review.'
+        ]}
+      />
+    </div>
     <p class="text-muted-foreground max-w-2xl text-sm sm:text-base">
       Renders adversarial text into a PNG that vision-capable models OCR + execute. Use covert
       or typographic mode to hide the instruction from a human reviewing the image; the OCR layer

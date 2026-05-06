@@ -13,6 +13,7 @@
   import { notify } from '$lib/stores/toast.svelte';
   import Copy from 'lucide-svelte/icons/copy';
   import FileText from 'lucide-svelte/icons/file-text';
+  import UsageHint from '$lib/components/shell/UsageHint.svelte';
 
   let kind = $state<IndirectPayloadKind>('web-article');
   let placement = $state<Placement>('footer');
@@ -53,9 +54,20 @@
 
 <section class="space-y-6">
   <header class="space-y-2">
-    <h1 class="font-serif text-3xl sm:text-4xl tracking-tight text-balance">
-      Indirect <span class="text-primary italic">injection</span> lab
-    </h1>
+    <div class="flex items-center gap-2">
+      <h1 class="font-serif text-3xl sm:text-4xl tracking-tight text-balance">
+        Indirect <span class="text-primary italic">injection</span> lab
+      </h1>
+      <UsageHint
+        title="Indirect injection · Usage"
+        bullets={[
+          'Pick a document shape (article, wiki, email, RSS, README, etc).',
+          'Pick injection placement — header / body / footer / comment / metadata.',
+          'Hidden instruction is woven into the document at that spot.',
+          'Copy the synthesized payload, feed to a RAG / summarization agent.'
+        ]}
+      />
+    </div>
     <p class="text-muted-foreground max-w-2xl text-sm sm:text-base">
       Synthesize document-class payloads — articles, wikis, emails, source code, RSS feeds, PDFs,
       forum threads, READMEs, changelogs, configs — with hidden instructions placed in headers,

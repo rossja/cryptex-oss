@@ -187,7 +187,7 @@
     </h2>
     <p class="text-sm leading-relaxed">
       Questions, concerns, or data requests:
-      <a href="mailto:m4xx101@protonmail.com" class="font-medium text-primary underline-offset-2 hover:underline">m4xx101@protonmail.com</a>.
+      <a href="mailto:m4xx101101@gmail.com" class="font-medium text-primary underline-offset-2 hover:underline">m4xx101101@gmail.com</a>.
       We aim to respond within 7 business days.
     </p>
     <p class="text-xs text-muted-foreground">

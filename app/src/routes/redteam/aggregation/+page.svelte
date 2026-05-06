@@ -5,6 +5,7 @@
   import { onMount } from 'svelte';
   import RefreshCw from 'lucide-svelte/icons/refresh-cw';
   import Database from 'lucide-svelte/icons/database';
+  import UsageHint from '$lib/components/shell/UsageHint.svelte';
 
   let chainRuns = $state<AttackChainRunRow[]>([]);
   let godmodeRuns = $state<GodmodeRunRow[]>([]);
@@ -132,9 +133,20 @@
 
 <section class="space-y-6">
   <header class="space-y-2">
-    <h1 class="font-serif text-3xl sm:text-4xl tracking-tight text-balance">
-      Run <span class="text-primary italic">aggregation</span>
-    </h1>
+    <div class="flex items-center gap-2">
+      <h1 class="font-serif text-3xl sm:text-4xl tracking-tight text-balance">
+        Run <span class="text-primary italic">aggregation</span>
+      </h1>
+      <UsageHint
+        title="Run aggregation · Usage"
+        bullets={[
+          'Reads every saved Attack Chain + Godmode run from this browser.',
+          'Heatmap = mutator × target. Cells colored by judge score.',
+          'Red = breaks, green = holds, yellow = partial.',
+          'Click any cell to see the underlying runs and their prompts.'
+        ]}
+      />
+    </div>
     <p class="text-muted-foreground max-w-2xl text-sm sm:text-base">
       Heatmap of mutator × target across every saved Attack Chain run + Godmode run in this
       browser. Surfaces which technique-model combinations actually break what.
