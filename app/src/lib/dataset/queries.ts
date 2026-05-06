@@ -102,18 +102,19 @@ export function filterMessages(rows: MessageRow[], filters: DatasetFilters = {})
 /**
  * Read all messages from Dexie and apply DatasetFilters in-memory.
  * Returns only non-tombstoned messages.
+ *
+ * SECURITY: defaults filters.ownerId to the current user when caller
+ * doesn't provide one. Without this default, a forgotten filter would
+ * leak rows across users post-auth (today every row has ownerId='local'
+ * so it's a no-op, but the seam stays correct as auth lights up).
  */
 export async function queryMessages(filters: DatasetFilters = {}): Promise<MessageRow[]> {
+  const ownerId = filters.ownerId ?? session.currentUser.id;
+
   // Use indexed query when possible to narrow the scan, then filter in memory
-  let rows: MessageRow[];
+  const rows = await db.messages.where('ownerId').equals(ownerId).toArray();
 
-  if (filters.ownerId) {
-    rows = await db.messages.where('ownerId').equals(filters.ownerId).toArray();
-  } else {
-    rows = await db.messages.toArray();
-  }
-
-  return filterMessages(rows, filters);
+  return filterMessages(rows, { ...filters, ownerId });
 }
 
 /**

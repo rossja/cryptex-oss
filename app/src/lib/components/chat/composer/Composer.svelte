@@ -7,6 +7,7 @@
   import type { Technique } from '$lib/chat/techniques/types';
   import { repo } from '$lib/chat/repo';
   import { extractAttachment } from '$lib/chat/attachments/extract';
+  import { catalog } from '$lib/ai/catalog.svelte';
   import SendStopButton from './SendStopButton.svelte';
   import SlashSuggestions from './SlashSuggestions.svelte';
   import AttachmentChips from './AttachmentChips.svelte';
@@ -186,19 +187,37 @@
 
     let llmDraft: string | ContentPart[];
     if (imageAttachments.length > 0) {
-      const parts: ContentPart[] = [];
-      // Text part first (some providers require non-empty text alongside images)
-      parts.push({ type: 'text', text: textForLLM.trim() ? textForLLM : '(image only)' });
-      // One image part per attached image
-      for (const img of imageAttachments) {
-        const dataUrl = await blobToDataUrl(img.blob);
-        parts.push({
-          type: 'image',
-          image: dataUrl,
-          mediaType: img.blob.type || 'image/jpeg'
-        });
+      // Vision-capability gate. Non-vision models 400 (or worse — silently
+      // describe nothing) on image content parts. We resolve the model
+      // from the catalog and degrade gracefully when capabilities.vision
+      // isn't claimed: replace each image part with a text placeholder
+      // describing the file. Users still get the attachment in their
+      // dataset; the LLM just gets a name + size hint.
+      const model = catalog.find(chat.modelQualifiedId);
+      const visionCapable = model?.capabilities?.vision === true;
+
+      if (!visionCapable) {
+        const placeholders = imageAttachments
+          .map((a) => `[image attached: ${a.name}, ${a.blob.type || 'unknown'}, ${a.size} bytes — current model does not support vision]`)
+          .join('\n');
+        llmDraft = textForLLM
+          ? `${textForLLM}\n\n${placeholders}`
+          : placeholders;
+      } else {
+        const parts: ContentPart[] = [];
+        // Text part first (some providers require non-empty text alongside images)
+        parts.push({ type: 'text', text: textForLLM.trim() ? textForLLM : '(image only)' });
+        // One image part per attached image
+        for (const img of imageAttachments) {
+          const dataUrl = await blobToDataUrl(img.blob);
+          parts.push({
+            type: 'image',
+            image: dataUrl,
+            mediaType: img.blob.type || 'image/jpeg'
+          });
+        }
+        llmDraft = parts;
       }
-      llmDraft = parts;
     } else {
       llmDraft = textForLLM;
     }

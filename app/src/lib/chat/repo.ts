@@ -93,6 +93,20 @@ export const repo = {
     await db.messages.put(JSON.parse(JSON.stringify({ ...existing, ...patch })));
   },
 
+  /** Soft-delete a message (sets tombstoned=true). Listing functions
+   *  filter on tombstoned. The row stays in IndexedDB for audit / undo /
+   *  dataset-export-with-deleted scenarios; if hard delete is needed,
+   *  add a separate purgeMessage() that calls db.messages.delete(id). */
+  async deleteMessage(id: string): Promise<void> {
+    const existing = await db.messages.get(id);
+    if (!existing || existing.ownerId !== ownerId()) return;
+    await db.messages.put(
+      JSON.parse(
+        JSON.stringify({ ...existing, tombstoned: true, updatedAt: Date.now() })
+      )
+    );
+  },
+
   async listMessages(chatId: string): Promise<MessageRow[]> {
     const all = await db.messages.where('[chatId+createdAt]').between([chatId, -Infinity], [chatId, Infinity]).toArray();
     return all.filter((m) => m.ownerId === ownerId() && !m.tombstoned);

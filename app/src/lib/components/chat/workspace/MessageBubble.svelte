@@ -19,6 +19,8 @@
   import UserIcon from 'lucide-svelte/icons/user';
   import Wrench from 'lucide-svelte/icons/wrench';
   import Info from 'lucide-svelte/icons/info';
+  import RefreshCw from 'lucide-svelte/icons/refresh-cw';
+  import Trash2 from 'lucide-svelte/icons/trash-2';
   import { repo } from '$lib/chat/repo';
 
   type Props = { message: MessageRow; chat: ChatRow; live?: boolean };
@@ -61,6 +63,28 @@
     await navigator.clipboard.writeText(message.content);
     copied = true;
     setTimeout(() => { copied = false; }, 1800);
+  }
+
+  /** Re-run the assistant turn that produced THIS message. ChatWorkspace
+   *  owns the actual streaming; we just dispatch the intent. */
+  function handleRegenerate() {
+    window.dispatchEvent(
+      new CustomEvent('chat:regenerate-message', { detail: { messageId: message.id } })
+    );
+  }
+
+  /** Soft-delete the message (tombstones it; stays in IndexedDB for the
+   *  dataset). ChatWorkspace listens and refreshes the message list. */
+  async function handleDelete() {
+    if (!confirm('Delete this message? It stays in your dataset export, but disappears from the chat.')) return;
+    try {
+      await repo.deleteMessage(message.id);
+      window.dispatchEvent(
+        new CustomEvent('chat:message-deleted', { detail: { messageId: message.id } })
+      );
+    } catch (err) {
+      console.error('[delete-message] failed:', err);
+    }
   }
 
   /** Strip UUID prefix from openai-compat qualified IDs, e.g.
@@ -172,11 +196,31 @@
       {#if isAssistant && !live && message.id !== 'streaming'}
         <button
           type="button"
+          onclick={handleRegenerate}
+          class="inline-flex items-center gap-1 rounded p-0.5 hover:bg-muted/40 hover:text-foreground transition-colors"
+          aria-label="Regenerate this reply"
+          title="Regenerate"
+        >
+          <RefreshCw size={11} />
+        </button>
+        <button
+          type="button"
           onclick={handleFork}
           class="inline-flex items-center gap-1 rounded p-0.5 hover:bg-muted/40 hover:text-foreground transition-colors"
           aria-label="Fork from this message"
         >
           <GitBranch size={11} /> Fork
+        </button>
+      {/if}
+      {#if !live && message.id !== 'streaming' && (isUser || isAssistant)}
+        <button
+          type="button"
+          onclick={handleDelete}
+          class="inline-flex items-center gap-1 rounded p-0.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+          aria-label="Delete this message"
+          title="Delete"
+        >
+          <Trash2 size={11} />
         </button>
       {/if}
     </div>

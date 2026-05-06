@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { ChatRow, MessageRow } from '$lib/chat/types';
   import { repo } from '$lib/chat/repo';
-  import { continueAssistantMessage } from '$lib/chat/dispatch';
+  import { continueAssistantMessage, regenerateAssistantMessage } from '$lib/chat/dispatch';
   import ChatHeader from './ChatHeader.svelte';
   import MessageList from './MessageList.svelte';
   import Composer from '../composer/Composer.svelte';
@@ -127,12 +127,59 @@
     }
   }
 
+  /** Regenerate replaces the prior assistant message in place. The
+   *  dispatch routine tombstones the old reply, then streams a new one
+   *  via the same onMessageAppended path used by send. We refresh
+   *  messages afterwards to drop the tombstoned row from the view. */
+  async function handleRegenerateMessage(messageId: string) {
+    if (streaming) return;
+    streaming = true;
+    continueCtrl = new AbortController();
+    try {
+      await regenerateAssistantMessage(chat, messageId, continueCtrl.signal, {
+        onTextDelta,
+        onReasoningDelta,
+        onFinish: (msg) => {
+          // Replace the tombstoned message with the new one + sweep stale
+          // rows out of the view.
+          messages = messages.filter((m) => m.id !== messageId);
+          onMessageAppended(msg);
+        },
+        onError: (err) => {
+          console.error('[regenerate]', err);
+          showStreamError((err as Error)?.message || String(err));
+        }
+      });
+    } catch (err) {
+      console.error('[regenerate] unhandled', err);
+      showStreamError((err as Error)?.message || String(err));
+    } finally {
+      streaming = false;
+      continueCtrl = null;
+    }
+  }
+
   onMount(() => {
     const continueHandler = (e: Event) => {
       const id = (e as CustomEvent<{ messageId: string }>).detail?.messageId;
       if (typeof id === 'string') void handleContinueMessage(id);
     };
     window.addEventListener('chat:continue-message', continueHandler);
+
+    const regenerateHandler = (e: Event) => {
+      const id = (e as CustomEvent<{ messageId: string }>).detail?.messageId;
+      if (typeof id === 'string') void handleRegenerateMessage(id);
+    };
+    window.addEventListener('chat:regenerate-message', regenerateHandler);
+
+    /** Soft-delete just removes the row from the view; repo already
+     *  flipped tombstoned in IndexedDB. */
+    const deletedHandler = (e: Event) => {
+      const id = (e as CustomEvent<{ messageId: string }>).detail?.messageId;
+      if (typeof id !== 'string') return;
+      messages = messages.filter((m) => m.id !== id);
+    };
+    window.addEventListener('chat:message-deleted', deletedHandler);
 
     const streamErrorHandler = (e: Event) => {
       const msg = (e as CustomEvent<{ message: string }>).detail?.message;
@@ -142,6 +189,8 @@
 
     return () => {
       window.removeEventListener('chat:continue-message', continueHandler);
+      window.removeEventListener('chat:regenerate-message', regenerateHandler);
+      window.removeEventListener('chat:message-deleted', deletedHandler);
       window.removeEventListener('chat:stream-error', streamErrorHandler);
     };
   });
