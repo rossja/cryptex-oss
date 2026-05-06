@@ -22,6 +22,12 @@
   import Activity from 'lucide-svelte/icons/activity';
   import Wrench from 'lucide-svelte/icons/wrench';
   import FileText from 'lucide-svelte/icons/file-text';
+  import Target from 'lucide-svelte/icons/target';
+  import Gauge from 'lucide-svelte/icons/gauge';
+  import ShieldCheck from 'lucide-svelte/icons/shield-check';
+  import Fingerprint from 'lucide-svelte/icons/fingerprint';
+  import Droplet from 'lucide-svelte/icons/droplet';
+  import FileScan from 'lucide-svelte/icons/file-scan';
   import { onMount, tick } from 'svelte';
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -46,8 +52,14 @@
     { href: '/redteam/cross-model-diff', label: 'Cross-Diff', icon: GitCompare,    status: 'live' },
     { href: '/redteam/replayer',          label: 'Replayer',   icon: History,       status: 'live' },
     { href: '/redteam/aggregation',       label: 'Aggregate',  icon: Activity,      status: 'live' },
-    { href: '/redteam/tool-result-lab',   label: 'Tool Lab',   icon: Wrench,        status: 'live' },
-    { href: '/redteam/indirect-injection', label: 'Indirect',  icon: FileText,      status: 'live' }
+    { href: '/redteam/tool-result-lab',   label: 'Tool Lab',    icon: Wrench,        status: 'live' },
+    { href: '/redteam/indirect-injection', label: 'Indirect',   icon: FileText,      status: 'live' },
+    { href: '/redteam/harmbench',          label: 'HarmBench',   icon: Target,        status: 'live' },
+    { href: '/redteam/strongreject',       label: 'StrongREJECT', icon: Gauge,        status: 'live' },
+    { href: '/redteam/jbb',                label: 'JBB',         icon: ShieldCheck,   status: 'live' },
+    { href: '/redteam/fingerprinter',      label: 'Fingerprint', icon: Fingerprint,   status: 'live' },
+    { href: '/redteam/watermark',          label: 'Watermark',   icon: Droplet,       status: 'live' },
+    { href: '/redteam/pdf-injection',      label: 'PDF Inject',  icon: FileScan,      status: 'live' }
   ];
 
   let list: HTMLOListElement | undefined = $state();
