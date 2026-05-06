@@ -122,12 +122,15 @@ No Svelte component imports Dexie directly; all DB access goes through `$lib/cha
 - `$lib/auth/key-vault.ts` — `KeyVault` wrapper; reads from `localStorage` in v1, SecureStorage/KMS in v2
 - `ownerId` on every row — always `'local'` today; filtered by real user ID after auth
 
-**Technique registry** — `$lib/chat/techniques/registry.ts` aggregates:
+**Technique registry** — `$lib/chat/techniques/registry.ts` aggregates (post-R1, 2026-05):
 - 162 transformers (from `src/transformers/` via the SvelteKit static adapter)
-- 9 mutators: `rephrase`, `obfuscate`, `roleplay`, `multilingual`, `expand`, `compress`, `metaphor`, `fragment`, `custom`
-- 9 classifier techniques (from `from-classifier.ts`)
+- **18 mutators**: `rephrase`, `obfuscate`, `roleplay`, `multilingual`, `fragment`, `custom`, `red_team_persona`, `step_back`, `chain_of_verification`, `ctf_framing`, `rfc_style`, `payload_split`, `hypothetical_world`, `cipher_encode_bypass`, `pap_logical`, `pap_authority`, `many_shot`, `tap_seeder`
+- **7 classifier techniques** (from `from-classifier.ts`): `circumlocution`, `metonymy`, `semantic_decomposition`, `technical_register`, `academic_framing`, `temporal_displacement`, `perplexity_raise`
 - 3 conversation modes: `creative`, `intelligent`, `adaptive` (local prompt templates, `modes/` directory)
-- 1 godmode stub: scaffolded + disabled in v1 (`godmode/` directory)
+- 1 godmode (browser-only local engine + edge-function client, `godmode/` directory)
+- 4 composites: `base64_smuggle`, `grammar_constrained_output`, `layered_mutation`, `multi_layer_attack`
+
+R1 retirement (2026-05) removed 7 mutators (`refusal_suppression`, `prefix_injection`, `skeleton_key`, `deep_inception`, `crescendo`, `in_context_compliance`, `json_schema_coerce` — 2023-era tripwires / redundant), 4 classifiers (`em_dash_interjection`, `sentence_length_oscillation`, `lexical_rarity_injection`, `structural_variation` — marginal), and 2 tools tabs (`Translate`, `Splitter` — covered by chat playground / payload_split). E1-E5 expansion plan adds ~17 new mutators + ~14 tools tabs targeting 2025-2026 attack surfaces.
 
 **Streaming + tool-calling**:
 - Streaming via `gateway.streamChat()` from `$lib/ai/gateway.ts` (Sub-project #1)
@@ -135,7 +138,7 @@ No Svelte component imports Dexie directly; all DB access goes through `$lib/cha
 - Dispatch logic in `$lib/chat/dispatch.ts`; slash-command parsing in `$lib/chat/slashParser.ts`
 
 **Slash commands** (typed in the composer):
-- 9 mutators: `/rephrase`, `/obfuscate`, `/roleplay`, `/multilingual`, `/expand`, `/compress`, `/metaphor`, `/fragment`, `/custom`
+- 18 mutators (post-R1) including `/rephrase`, `/obfuscate`, `/roleplay`, `/multilingual`, `/fragment`, `/custom`, `/many_shot`, `/tap_seeder`, `/pap_logical`, `/pap_authority`, etc.
 - `/btw` — out-of-context message (not included in LLM context window, captured for dataset only)
 
 **Dataset Inspector** (`/dataset`):
