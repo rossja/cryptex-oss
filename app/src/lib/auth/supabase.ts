@@ -81,18 +81,45 @@ export const supabase: SupabaseClient | null = (() => {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
-      // PKCE flow: the server returns ?code=… and the SDK exchanges that
-      // for a session using a code_verifier it stored at request time.
-      flowType: 'pkce',
-      // CRITICAL: leave this OFF. With detectSessionInUrl=true the SDK
-      // auto-runs exchangeCodeForSession() during client init when it sees
-      // ?code=… in the URL — which on the /auth/callback route races with
-      // our explicit exchangeCodeForSession() call there. The SDK consumes
-      // and clears the code_verifier from localStorage on the first call;
-      // the second call then errors with "both auth code and code verifier
-      // should be non-empty". We own the exchange in /auth/callback, so the
-      // auto-detect is unnecessary.
-      detectSessionInUrl: false
+      /*
+       * Why implicit flow (and not the more modern PKCE):
+       *
+       * We previously ran flowType: 'pkce'. PKCE requires a second
+       * round-trip from /auth/callback to Supabase's
+       * /auth/v1/token?grant_type=pkce endpoint to exchange the
+       * server-issued ?code=… for a session. On at least one Supabase
+       * project (gotrue version mismatch / pause-resume side-effect /
+       * undocumented), that endpoint returns 404 — which manifests as
+       * "GitHub OAuth fails" right at the very last step of the dance,
+       * AFTER the user has already approved on GitHub.
+       *
+       * Implicit flow sidesteps the second round-trip entirely.
+       * Supabase redirects the OAuth completion straight back to our
+       * redirect_to with `#access_token=…&refresh_token=…&expires_in=…`
+       * in the URL fragment. The SDK parses it and sets the session —
+       * no /token call, no PKCE endpoint to 404 on.
+       *
+       * Email-based flows (signup confirmation, password reset, email
+       * change) all use verifyOtp() with an explicit (email, token,
+       * type) tuple — they don't rely on URL state, so flowType doesn't
+       * affect them.
+       *
+       * Trade-off: implicit puts tokens in the URL fragment, which means
+       * they show up briefly in `window.location.href` and could be
+       * captured by extensions or the browser's history if the page
+       * doesn't immediately strip them. Our /auth/callback page calls
+       * goto() to /chat as soon as the session lands, replacing the URL
+       * — so the window of exposure is sub-second.
+       */
+      flowType: 'implicit',
+      /*
+       * detectSessionInUrl=true is required for implicit flow. The SDK
+       * inspects window.location on init, finds #access_token=…,
+       * decodes it, and sets the session automatically. Our
+       * /auth/callback page just waits for the resulting session to
+       * appear via getSession() — no manual exchange step.
+       */
+      detectSessionInUrl: true
     }
   });
 })();

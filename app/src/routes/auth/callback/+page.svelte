@@ -22,86 +22,68 @@
       return;
     }
 
-    // 1. If we already have a session (e.g. user reloaded /auth/callback with
-    //    a stale URL after signing in elsewhere), short-circuit to /chat.
-    const { data: existing } = await supabase.auth.getSession();
-    if (existing.session) {
-      void goto(`${base}/chat`);
-      return;
-    }
-
-    // 2. Inspect URL params for OAuth-style errors first. These come from
-    //    Supabase BEFORE any code exchange — link expired, redirect not in
-    //    allow-list, OAuth consent denied, etc.
+    /*
+     * Implicit flow: the Supabase SDK auto-parses the URL on init when
+     * `detectSessionInUrl: true` is set in the client config. By the time
+     * THIS onMount runs, one of three things has happened:
+     *
+     *  1. URL had #access_token=… → SDK already set the session. Visible
+     *     via supabase.auth.getSession(). We redirect to /chat.
+     *  2. URL had ?error=… (provider rejection / consent denied / link
+     *     expired) → no session set. Show the right recovery UI.
+     *  3. Bare URL (user hit /auth/callback by hand) → no session, no
+     *     error. Bounce to /login.
+     */
     const url = new URL(window.location.href);
-    const params = url.searchParams;
     const hashParams = new URLSearchParams(url.hash.replace(/^#/, ''));
-    const err = params.get('error') ?? hashParams.get('error');
-    const errDesc = params.get('error_description') ?? hashParams.get('error_description');
-    const errCode = params.get('error_code') ?? hashParams.get('error_code');
+    const queryErr = url.searchParams.get('error') ?? hashParams.get('error');
+    const queryErrDesc = url.searchParams.get('error_description') ?? hashParams.get('error_description');
+    const queryErrCode = url.searchParams.get('error_code') ?? hashParams.get('error_code');
 
-    // Decide which flow this is — affects the recovery UI we show on error.
-    flow = detectFlow(err, errDesc, params);
+    flow = detectFlow(queryErr, queryErrDesc, url.searchParams);
 
-    if (err || errDesc) {
-      handleProviderError(err, errDesc, errCode);
+    if (queryErr || queryErrDesc) {
+      handleProviderError(queryErr, queryErrDesc, queryErrCode);
       return;
     }
 
-    if (!params.get('code')) {
-      message = 'Redirecting to sign in…';
-      setTimeout(() => void goto(`${base}/login`), 1000);
-      return;
-    }
-
-    // 3. PKCE exchange. Pass the full search string so the SDK can extract
-    //    the code; it then reads the code_verifier from localStorage.
-    const { data, error } = await supabase.auth.exchangeCodeForSession(window.location.search);
-
-    if (error) {
-      isError = true;
-      // PKCE code-verifier mismatch — link opened in a different browser
-      // than the one that initiated sign-in. This is genuinely an
-      // email-flow issue (OAuth doesn't generate a code_verifier on the
-      // client), so the OTP fallback is the right recovery here.
-      if (/code verifier/i.test(error.message) || /code_verifier/i.test(error.message)) {
-        flow = 'email';
-        message = 'Sign-in failed';
-        detail = 'Open the email in the same browser you started from — or use the 6-digit code, which works from any browser.';
-        showOtpFallback = true;
-      } else if (flow === 'oauth') {
-        message = 'Sign-in failed';
-        detail = 'The provider rejected the sign-in. Try again, or use email + password.';
-        showOAuthRetry = true;
-      } else {
-        message = 'Sign-in failed';
-        detail = 'Try again, or use the 6-digit code from your email.';
-        showOtpFallback = true;
+    /*
+     * Poll for the session for up to 4s. The SDK sets it synchronously
+     * on init in most cases, but on some browsers (or with a slow
+     * localStorage) the auth-state-change event arrives a few ticks
+     * later. Poll instead of fire-and-forget so we don't redirect
+     * before the session lands.
+     */
+    const deadline = Date.now() + 4_000;
+    while (Date.now() < deadline) {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        void goto(`${base}/chat`);
+        return;
       }
+      await new Promise((r) => setTimeout(r, 80));
+    }
+
+    // No error in URL, no session after 4s. Most likely the user navigated
+    // here directly. Redirect quietly.
+    if (!url.hash && !url.searchParams.toString()) {
+      message = 'Redirecting to sign in…';
+      setTimeout(() => void goto(`${base}/login`), 800);
       return;
     }
 
-    if (data.session) {
-      void goto(`${base}/chat`);
-    } else {
-      isError = true;
-      message = 'Sign-in incomplete';
-      detail = 'No session was returned. Try again.';
-      if (flow === 'oauth') showOAuthRetry = true;
-      else showOtpFallback = true;
-    }
+    isError = true;
+    message = 'Sign-in incomplete';
+    detail = 'No session was returned. Try again.';
+    if (flow === 'oauth') showOAuthRetry = true;
+    else showOtpFallback = true;
   });
 
-  /**
-   * Heuristically tell email/OTP flows apart from OAuth flows by looking
-   * at the URL Supabase redirected us to:
-   *   - OAuth provider failures usually carry `provider=` or
-   *     `error=server_error` plus `error_description` mentioning the
-   *     external provider name.
-   *   - Email flows surface `error_code=otp_expired` or
-   *     `error_description` containing "email link" / "email expired".
-   *   - Successful PKCE redirects always carry `?code=` (no error
-   *     params) — flow stays 'unknown' and we don't show recovery UI.
+  /*
+   * Heuristic flow detection — drives the recovery UI shape.
+   * Email flows tend to surface error_code=otp_expired or "email link"
+   * phrasing; OAuth flows tend to surface error=server_error/access_denied
+   * with provider-related description.
    */
   function detectFlow(err: string | null, desc: string | null, params: URLSearchParams): Flow {
     const d = (desc ?? '').toLowerCase();
@@ -111,11 +93,7 @@
     ) {
       return 'email';
     }
-    if (
-      err === 'server_error' ||
-      /external|provider|oauth|consent/.test(d) ||
-      params.has('provider')
-    ) {
+    if (err === 'server_error' || /external|provider|oauth|consent/.test(d) || params.has('provider')) {
       return 'oauth';
     }
     return 'unknown';
@@ -125,13 +103,9 @@
     isError = true;
 
     if (flow === 'oauth') {
-      // OAuth provider rejection — Google / GitHub returned an error to
-      // Supabase, which forwarded it here. Common causes: provider OAuth
-      // app misconfigured, user denied consent, transient provider issue.
-      // OTP path doesn't help here, so don't show it.
       if (err === 'access_denied') {
         message = 'Sign-in cancelled';
-        detail = 'You cancelled at the provider\'s consent screen.';
+        detail = "You cancelled at the provider's consent screen.";
       } else {
         message = 'Sign-in could not complete';
         detail = 'The provider rejected the sign-in. Try again, or use email + password.';
@@ -140,10 +114,6 @@
       return;
     }
 
-    // Email flow — link expired / consumed / invalid. The OTP path is
-    // the right recovery (codes are prefetch-resistant). We DON'T mention
-    // why — that detail (security scanners consume single-use links) is
-    // an attack-surface disclosure in production.
     if (code === 'otp_expired' || /expired|invalid/i.test(desc ?? '') || err === 'access_denied') {
       message = 'That sign-in link is no longer valid';
       detail = 'Use the 6-digit code from the email — it lasts longer and works from any browser.';
