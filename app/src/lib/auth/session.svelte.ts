@@ -167,6 +167,38 @@ export const session = {
     if (error) throw error;
   },
 
+  /**
+   * Verify a 6-digit OTP code from a Supabase email instead of clicking
+   * the link. Used as a workaround for email-link prefetchers (Outlook
+   * Safe Links, Google Workspace link-protection, antivirus, etc.) which
+   * HEAD-request URLs in mail to scan for malware — that prefetch
+   * consumes the single-use token, so the human's later click sees
+   * "Email link is invalid or has expired".
+   *
+   * `type` matches Supabase's email types:
+   *   - 'signup'    — confirm email after signUp
+   *   - 'magiclink' — passwordless sign-in
+   *   - 'recovery'  — password reset
+   *   - 'invite'    — accept invite
+   *   - 'email_change' — confirm new email address
+   *   - 'email'     — generic; works for signup + magiclink in newer SDKs
+   */
+  async verifyEmailOtp(
+    email: string,
+    token: string,
+    type: 'signup' | 'magiclink' | 'recovery' | 'invite' | 'email_change' | 'email'
+  ): Promise<void> {
+    if (!supabase) throw new Error('Auth not enabled');
+    const cleaned = token.replace(/\s+/g, '').trim();
+    if (!cleaned) throw new Error('Enter the code from your email.');
+    const { error } = await supabase.auth.verifyOtp({
+      email,
+      token: cleaned,
+      type
+    });
+    if (error) throw error;
+  },
+
   /** Set or change the signed-in user's password. Used both for users who
    *  signed up via magic-link / OAuth (no password set yet) and for users
    *  changing an existing password. Supabase enforces server-side checks

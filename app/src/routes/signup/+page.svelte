@@ -8,6 +8,8 @@
   import EyeOff from 'lucide-svelte/icons/eye-off';
   import Check from 'lucide-svelte/icons/check';
   import X from 'lucide-svelte/icons/x';
+  import Loader from 'lucide-svelte/icons/loader-circle';
+  import KeyRound from 'lucide-svelte/icons/key-round';
 
   let email = $state('');
   let password = $state('');
@@ -17,7 +19,15 @@
   let error = $state<string | null>(null);
   let success = $state(false);
   let loading = $state(false);
-  let busyProvider = $state<'google' | 'github' | 'password' | null>(null);
+  let busyProvider = $state<'google' | 'github' | 'password' | 'otp' | 'resend' | null>(null);
+
+  // After Supabase emails the confirmation, the user can paste the 6-digit
+  // code instead of clicking the link. This is the prefetch-safe path —
+  // email-scanner bots can't extract the OTP from the email content the
+  // way they HEAD-request a URL.
+  let otpCode = $state('');
+  let otpError = $state<string | null>(null);
+  let otpInfo = $state<string | null>(null);
 
   // Password strength rules — checked locally before form submit so users get
   // instant feedback. Supabase enforces server-side too.
@@ -81,6 +91,53 @@
     }
   }
 
+  /** Verify the 6-digit code from the confirmation email. */
+  async function verifyOtp() {
+    if (!email || !otpCode) return;
+    loading = true;
+    busyProvider = 'otp';
+    otpError = null;
+    otpInfo = null;
+    try {
+      // type='email' covers both signup confirmation and email-change in
+      // recent Supabase SDKs; for older versions, 'signup' is the canonical
+      // signup-confirmation type. We pass 'email' first; if it errors with
+      // a recognizable shape, retry as 'signup'.
+      try {
+        await session.verifyEmailOtp(email, otpCode, 'email');
+      } catch {
+        await session.verifyEmailOtp(email, otpCode, 'signup');
+      }
+      // verifyEmailOtp completes the session synchronously; the global
+      // signed-in effect below will redirect to /chat.
+    } catch (e) {
+      otpError = (e as Error).message || 'Invalid code.';
+    } finally {
+      loading = false;
+      busyProvider = null;
+    }
+  }
+
+  /** Resend the confirmation email with a fresh OTP. */
+  async function resendCode() {
+    if (!email) return;
+    loading = true;
+    busyProvider = 'resend';
+    otpError = null;
+    otpInfo = null;
+    try {
+      // Resend uses signInWithMagicLink which Supabase auto-dispatches as a
+      // signup confirmation when the user is unconfirmed.
+      await session.signInWithMagicLink(email);
+      otpInfo = 'New code sent.';
+    } catch (e) {
+      otpError = (e as Error).message;
+    } finally {
+      loading = false;
+      busyProvider = null;
+    }
+  }
+
   $effect(() => {
     if (session.isReady && session.isSignedIn) void goto(`${base}/chat`);
   });
@@ -111,13 +168,61 @@
 
     <div class="w-full rounded-2xl border border-border/60 bg-card/60 p-6 shadow-sm backdrop-blur-sm">
       {#if success}
-        <p class="text-sm leading-relaxed text-muted-foreground">
-          Open your email <strong class="text-foreground">{email}</strong> and click the confirmation link to finish creating your account. The link expires in 24 hours.
-        </p>
-        <p class="mt-4 text-xs text-muted-foreground">
-          Didn't get it? Check spam, or
-          <a href="{base}/login" class="font-medium text-foreground underline-offset-4 hover:underline">try sending a magic link instead</a>.
-        </p>
+        <form
+          onsubmit={(e) => { e.preventDefault(); void verifyOtp(); }}
+          class="flex flex-col gap-4"
+        >
+          <p class="text-sm leading-relaxed text-muted-foreground">
+            We sent a confirmation email to <strong class="text-foreground break-all">{email}</strong>. <strong class="text-foreground">Paste the 6-digit code from the email below</strong> — it's the most reliable path. (The clickable link in the email also works, but corporate email scanners sometimes consume single-use links before you click.)
+          </p>
+
+          <label class="flex flex-col gap-1.5 text-xs">
+            <span class="font-medium text-foreground">Verification code</span>
+            <input
+              bind:value={otpCode}
+              type="text"
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              pattern="[0-9]*"
+              maxlength="10"
+              placeholder="123456"
+              class="w-full rounded-lg border border-border/60 bg-background/60 px-3 py-2.5 text-center font-mono text-lg tracking-[0.4em] shadow-inner focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </label>
+
+          <button
+            type="submit"
+            disabled={loading || !otpCode}
+            class="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-primary text-sm font-medium text-primary-foreground shadow-primary transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {#if busyProvider === 'otp'}
+              <Loader size={14} class="animate-spin" /> Verifying…
+            {:else}
+              <KeyRound size={14} /> Verify code
+            {/if}
+          </button>
+
+          <div class="flex flex-col gap-2 border-t border-border/40 pt-3 text-[11px]">
+            <button
+              type="button"
+              onclick={resendCode}
+              disabled={loading}
+              class="text-left text-muted-foreground underline-offset-2 hover:text-foreground hover:underline disabled:opacity-50"
+            >
+              {busyProvider === 'resend' ? 'Sending new code…' : 'Send a new code'}
+            </button>
+            <p class="text-muted-foreground/80">
+              Codes expire in 1 hour. Check spam if it doesn't arrive within a minute.
+            </p>
+          </div>
+
+          {#if otpInfo}
+            <p role="status" class="rounded-md border border-primary/30 bg-primary/5 p-2 text-xs text-foreground">{otpInfo}</p>
+          {/if}
+          {#if otpError}
+            <p role="alert" class="rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive">{otpError}</p>
+          {/if}
+        </form>
       {:else}
         <form
           onsubmit={(e) => { e.preventDefault(); void signUp(); }}

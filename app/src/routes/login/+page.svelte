@@ -20,8 +20,16 @@
   let error = $state<string | null>(null);
   let info = $state<string | null>(null);
   let loading = $state(false);
-  let busyProvider = $state<'google' | 'github' | 'password' | 'magic' | 'reset' | null>(null);
+  let busyProvider = $state<'google' | 'github' | 'password' | 'magic' | 'reset' | 'otp' | null>(null);
   let resetMode = $state(false);
+
+  // After "Send magic link" succeeds, switch the panel to OTP entry. This is
+  // the prefetch-resistant path — the user pastes the 6-digit code from the
+  // email rather than clicking a single-use link that corporate scanners
+  // (Outlook Safe Links, Gmail link-protection, antivirus) sometimes
+  // consume in transit.
+  let magicSent = $state(false);
+  let otpCode = $state('');
 
   async function google() {
     loading = true; busyProvider = 'google'; error = null;
@@ -47,9 +55,27 @@
     loading = true; busyProvider = 'magic'; error = null; info = null;
     try {
       await session.signInWithMagicLink(email);
-      info = `Magic link sent to ${email}. Check your inbox.`;
+      magicSent = true;
+      info = `Code sent to ${email}.`;
     } catch (e) {
       error = (e as Error).message;
+    } finally { loading = false; busyProvider = null; }
+  }
+
+  async function verifyMagicOtp() {
+    if (!email || !otpCode) return;
+    loading = true; busyProvider = 'otp'; error = null; info = null;
+    try {
+      // 'email' covers both signup + magiclink in current Supabase SDKs;
+      // fall back to 'magiclink' if the SDK rejects 'email'.
+      try {
+        await session.verifyEmailOtp(email, otpCode, 'email');
+      } catch {
+        await session.verifyEmailOtp(email, otpCode, 'magiclink');
+      }
+      // Sign-in completes; the redirect effect navigates to /chat.
+    } catch (e) {
+      error = (e as Error).message || 'Invalid code.';
     } finally { loading = false; busyProvider = null; }
   }
 
@@ -222,7 +248,7 @@
                 {/if}
               </button>
             </form>
-          {:else}
+          {:else if !magicSent}
             <form onsubmit={(e) => { e.preventDefault(); void magicLink(); }} class="flex flex-col gap-3">
               <label class="flex flex-col gap-1.5 text-xs">
                 <span class="font-medium text-foreground">Email</span>
@@ -246,13 +272,61 @@
                 {#if busyProvider === 'magic'}
                   <Loader size={14} class="animate-spin" /> Sending…
                 {:else}
-                  <Mail size={14} /> Send magic link
+                  <Mail size={14} /> Send sign-in code
                 {/if}
               </button>
 
               <p class="text-[11px] leading-relaxed text-muted-foreground">
-                We'll email a one-time link. No password required. Check spam if it doesn't arrive within a minute.
+                We'll email a one-time 6-digit code (and a clickable link). No password required.
               </p>
+            </form>
+          {:else}
+            <form onsubmit={(e) => { e.preventDefault(); void verifyMagicOtp(); }} class="flex flex-col gap-3">
+              <p class="text-[12px] leading-relaxed text-muted-foreground">
+                Code sent to <strong class="text-foreground break-all">{email}</strong>. Paste the 6-digit code from the email below — that's the most reliable way (corporate email scanners sometimes consume single-use links before you click).
+              </p>
+
+              <label class="flex flex-col gap-1.5 text-xs">
+                <span class="font-medium text-foreground">Verification code</span>
+                <input
+                  bind:value={otpCode}
+                  type="text"
+                  inputmode="numeric"
+                  autocomplete="one-time-code"
+                  pattern="[0-9]*"
+                  maxlength="10"
+                  placeholder="123456"
+                  class="w-full rounded-lg border border-border/60 bg-background/60 px-3 py-2.5 text-center font-mono text-lg tracking-[0.4em] shadow-inner focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </label>
+
+              <button
+                type="submit"
+                disabled={loading || !otpCode}
+                class="mt-1 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-primary text-sm font-medium text-primary-foreground shadow-primary transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {#if busyProvider === 'otp'}
+                  <Loader size={14} class="animate-spin" /> Verifying…
+                {:else}
+                  <KeyRound size={14} /> Verify code
+                {/if}
+              </button>
+
+              <div class="flex flex-col gap-1.5 border-t border-border/40 pt-3 text-[11px]">
+                <button
+                  type="button"
+                  onclick={() => { magicSent = false; otpCode = ''; info = null; error = null; }}
+                  class="text-left text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                >← Use a different email</button>
+                <button
+                  type="button"
+                  onclick={() => void magicLink()}
+                  disabled={loading}
+                  class="text-left text-muted-foreground underline-offset-2 hover:text-foreground hover:underline disabled:opacity-50"
+                >
+                  {busyProvider === 'magic' ? 'Sending new code…' : 'Send a new code'}
+                </button>
+              </div>
             </form>
           {/if}
 
