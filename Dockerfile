@@ -12,6 +12,8 @@
 #   BASE_PATH              — subpath for the app (e.g. "/cryptex"). Empty for root.
 #   PUBLIC_ADSENSE_CLIENT  — optional Google AdSense publisher id (ca-pub-XXXX…).
 #                            Unset = no ads, no consent banner, no Google script.
+#   PUBLIC_GA_ID           — optional Google Analytics 4 measurement id (G-XXXXXXXX).
+#                            Unset = no analytics, no gtag script, no events.
 
 # ---------- Stage 1: build the SvelteKit app ----------
 FROM node:20-alpine AS builder
@@ -20,6 +22,7 @@ WORKDIR /build
 # Build arguments (must be declared before first use)
 ARG BASE_PATH=""
 ARG PUBLIC_ADSENSE_CLIENT=""
+ARG PUBLIC_GA_ID=""
 # Supabase auth (D4). When unset, defaults are empty — the auth stack falls
 # back to local-only mode (no breaking change to existing deploys). Set all
 # three to enable sign-in: VITE_AUTH_ENABLED=true + the two PUBLIC_SUPABASE_*.
@@ -34,6 +37,7 @@ ARG PUBLIC_GODMODE_LOCAL_ENABLED="true"
 # bundle, so they MUST be passed as build args, not just runtime env.)
 ENV BASE_PATH=${BASE_PATH} \
     PUBLIC_ADSENSE_CLIENT=${PUBLIC_ADSENSE_CLIENT} \
+    PUBLIC_GA_ID=${PUBLIC_GA_ID} \
     VITE_AUTH_ENABLED=${VITE_AUTH_ENABLED} \
     PUBLIC_SUPABASE_URL=${PUBLIC_SUPABASE_URL} \
     PUBLIC_SUPABASE_ANON_KEY=${PUBLIC_SUPABASE_ANON_KEY} \
@@ -51,6 +55,8 @@ RUN sh -c '\
   echo "[cryptex-build] PUBLIC_SUPABASE_URL=$(status "$PUBLIC_SUPABASE_URL")" ; \
   echo "[cryptex-build] PUBLIC_SUPABASE_ANON_KEY=$(status "$PUBLIC_SUPABASE_ANON_KEY")" ; \
   echo "[cryptex-build] PUBLIC_GODMODE_LOCAL_ENABLED=${PUBLIC_GODMODE_LOCAL_ENABLED:-MISSING}" ; \
+  echo "[cryptex-build] PUBLIC_ADSENSE_CLIENT=${PUBLIC_ADSENSE_CLIENT:-MISSING}" ; \
+  echo "[cryptex-build] PUBLIC_GA_ID=${PUBLIC_GA_ID:-MISSING}" ; \
 '
 
 # The SvelteKit build reads transformers from ../src/transformers via a Vite

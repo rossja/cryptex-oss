@@ -43,6 +43,7 @@ services:
       args:
         BASE_PATH: "${BASE_PATH:-}"
         PUBLIC_ADSENSE_CLIENT: "${PUBLIC_ADSENSE_CLIENT:-}"
+        PUBLIC_GA_ID: "${PUBLIC_GA_ID:-}"
         # Supabase auth (D4). All four MUST be passed as build args because
         # SvelteKit/Vite inline VITE_* and PUBLIC_* at BUILD time, not
         # runtime. Setting them only in `environment` below has no effect on

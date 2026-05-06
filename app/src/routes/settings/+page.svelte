@@ -20,6 +20,7 @@
   import Sparkles from 'lucide-svelte/icons/sparkles';
   import { consent, isAdSenseConfigured } from '$lib/stores/consent.svelte';
   import { ensureAdSenseState } from '$lib/ads/adsense.svelte';
+  import { ensureGaState, isGaConfigured } from '$lib/analytics/ga.svelte';
   import ProvidersPanel from '$lib/components/settings/ProvidersPanel.svelte';
   import SecurityPanel from '$lib/components/settings/SecurityPanel.svelte';
 
@@ -30,7 +31,7 @@
     { id: 'providers', label: 'AI Providers', icon: KeyRound, visible: () => true },
     { id: 'theme',     label: 'Appearance',  icon: Palette,  visible: () => true },
     { id: 'data',      label: 'Local Data',  icon: Database, visible: () => true },
-    { id: 'consent',   label: 'Privacy',     icon: Shield,   visible: () => isAdSenseConfigured() }
+    { id: 'consent',   label: 'Privacy',     icon: Shield,   visible: () => isAdSenseConfigured() || isGaConfigured() }
   ];
 
   const visibleSections = $derived(sections.filter((s) => s.visible()));
@@ -78,9 +79,10 @@
     else if (next === 'rejected') consent.reject();
     else consent.reset();
     ensureAdSenseState();
+    ensureGaState();
     notify.success(
-      next === 'accepted' ? 'Ads enabled on Guide / About' :
-      next === 'rejected' ? 'Ads disabled' :
+      next === 'accepted' ? 'Analytics + ads enabled' :
+      next === 'rejected' ? 'Analytics + ads disabled' :
       'Banner will re-show on next reload'
     );
   }
@@ -250,11 +252,21 @@
         <div class="space-y-3 rounded-xl border border-border bg-card/60 p-5 shadow-glass">
           <div class="flex items-center gap-2">
             <Shield size={16} class="text-primary" />
-            <h2 class="font-serif text-lg">Ad consent</h2>
+            <h2 class="font-serif text-lg">Privacy &amp; consent</h2>
           </div>
           <p class="text-sm text-muted-foreground">
-            This deploy includes Google AdSense on the Guide and About pages only. Tool pages never show ads
-            and never load the AdSense script. Revoke consent any time.
+            {#if isGaConfigured() && isAdSenseConfigured()}
+              This deploy includes anonymous analytics (Google Analytics 4) and shows AdSense ads on the
+              Guide / About / Privacy / Terms pages only. Tool pages and chat are 100% ad-free and never load
+              the AdSense script. IP addresses are anonymized at collection.
+            {:else if isAdSenseConfigured()}
+              This deploy shows AdSense ads on the Guide / About / Privacy / Terms pages only.
+              Tool pages and chat never show ads and never load the AdSense script.
+            {:else if isGaConfigured()}
+              This deploy uses anonymous Google Analytics 4 to count page views. IP addresses are
+              anonymized at collection.
+            {/if}
+            Revoke consent any time.
           </p>
           <div class="inline-flex gap-1 rounded-lg border border-border bg-card/40 p-1">
             {#each [['accepted', 'Accepted'], ['rejected', 'Rejected'], ['unknown', 'Ask again']] as [id, label]}

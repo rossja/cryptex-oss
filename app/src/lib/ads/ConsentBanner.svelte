@@ -1,25 +1,30 @@
 <script lang="ts">
   /**
-   * Bottom-sheet consent banner. Appears on first load IFF AdSense is
+   * Bottom-sheet consent banner. Appears on first load IFF AdSense or GA is
    * configured for the build AND the user hasn't answered yet.
-   * Never appears on self-hosted builds (no PUBLIC_ADSENSE_CLIENT).
+   * Never appears on self-hosted builds with neither configured.
    */
   import { fly } from 'svelte/transition';
   import { consent, isAdSenseConfigured } from '$lib/stores/consent.svelte';
+  import { isGaConfigured, ensureGaState } from '$lib/analytics/ga.svelte';
   import { ensureAdSenseState } from './adsense.svelte';
   import { base } from '$app/paths';
   import Shield from 'lucide-svelte/icons/shield';
   import X from 'lucide-svelte/icons/x';
 
-  const visible = $derived(isAdSenseConfigured() && consent.unknown);
+  const adsConfigured = isAdSenseConfigured();
+  const gaConfigured = isGaConfigured();
+  const visible = $derived((adsConfigured || gaConfigured) && consent.unknown);
 
   function accept() {
     consent.accept();
     ensureAdSenseState();
+    ensureGaState();
   }
   function reject() {
     consent.reject();
     ensureAdSenseState();
+    ensureGaState();
   }
 </script>
 
@@ -34,14 +39,26 @@
     <div class="flex items-start gap-3 p-4">
       <Shield size={18} class="shrink-0 text-primary mt-0.5" />
       <div class="flex-1 min-w-0 text-sm">
-        <div class="font-serif text-base mb-1">Cookie &amp; ad choice</div>
+        <div class="font-serif text-base mb-1">Cookie &amp; consent choice</div>
         <p class="text-muted-foreground leading-relaxed">
-          This hosted instance shows Google AdSense on the
-          <a class="text-primary underline underline-offset-2" href={base + '/guide/'}>Guide</a> and
-          <a class="text-primary underline underline-offset-2" href={base + '/about/'}>About</a>
-          pages only — never on the tools. Ads help keep this instance free.
-          <strong class="text-foreground">Your tool usage is never tracked.</strong>
-          <a class="text-primary underline underline-offset-2" href={base + '/guide/privacy/'}>Learn more</a>.
+          {#if adsConfigured && gaConfigured}
+            This hosted instance uses anonymous analytics (Google Analytics 4) and shows ads
+            (Google AdSense) on the <a class="text-primary underline underline-offset-2" href={base + '/guide/'}>Guide</a>,
+            <a class="text-primary underline underline-offset-2" href={base + '/about/'}>About</a>,
+            <a class="text-primary underline underline-offset-2" href={base + '/privacy/'}>Privacy</a>, and
+            <a class="text-primary underline underline-offset-2" href={base + '/terms/'}>Terms</a> pages — never on the tools.
+          {:else if adsConfigured}
+            This hosted instance shows Google AdSense on the
+            <a class="text-primary underline underline-offset-2" href={base + '/guide/'}>Guide</a>,
+            <a class="text-primary underline underline-offset-2" href={base + '/about/'}>About</a>,
+            <a class="text-primary underline underline-offset-2" href={base + '/privacy/'}>Privacy</a>, and
+            <a class="text-primary underline underline-offset-2" href={base + '/terms/'}>Terms</a> pages — never on the tools.
+          {:else}
+            This hosted instance uses anonymous analytics (Google Analytics 4) to count page views.
+            IPs are anonymized at collection.
+          {/if}
+          <strong class="text-foreground">Your tool inputs and chat content are never tracked.</strong>
+          See <a class="text-primary underline underline-offset-2" href={base + '/privacy/'}>Privacy</a>.
         </p>
       </div>
       <button
