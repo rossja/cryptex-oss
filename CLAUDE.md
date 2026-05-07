@@ -164,8 +164,43 @@ R1 retirement (2026-05) removed 7 mutators (`refusal_suppression`, `prefix_injec
 If you see stale state after editing, re-run the specific `build:*` step (or full `npm run build`) before debugging — many "bugs" are just an unbuilt `dist/`.
 
 ## Deployment
-`.github/workflows/deploy.yml` builds and publishes `dist/` to GitHub Pages on push to `main`/`master`. It runs `npm run test:all` first and verifies three critical output files (`dist/index.html`, the transforms bundle, the emoji data) exist before uploading.
+Cryptex deploys via **Dokploy** (Docker Compose) on `git push origin master`. Build runs `cd app && npm run build` (SvelteKit static adapter); image is `nginx:1.27-alpine` serving the static output. The legacy GitHub Pages deploy was removed in commit `00a07ee`; only `.github/workflows/docker.yml` remains and is informational only.
+
+Build args plumbed through Dockerfile + docker-compose (DEPLOY-CONTRACT — see hard-locked list below):
+- `BASE_PATH` (subpath; empty for root)
+- `VITE_AUTH_ENABLED`
+- `PUBLIC_SUPABASE_URL` + `PUBLIC_SUPABASE_ANON_KEY`
+- `PUBLIC_GODMODE_LOCAL_ENABLED`
+- `PUBLIC_ADSENSE_CLIENT` (optional)
+- `PUBLIC_GA_ID` (optional)
+
+`[cryptex-build]` masked diagnostic prints presence/length of each in the build log so missing-env regressions are easy to spot.
+
+**Hard-locked deploy contract** — do NOT modify without explicit user OK: `Dockerfile`, `docker-compose.yml`, `nginx.conf`, `app/vite.config.ts envPrefix`, `app/svelte.config.js` adapter, `.github/workflows/*.yml`. Any CSP / HSTS hardening that touches `nginx.conf` is gated on user approval.
+
+## Auth pipeline (post 2026-05-07 hardening)
+
+Production-grade Supabase auth, browser-only (no Node server). Critical files:
+- `app/src/lib/auth/supabase.ts` — client config: `flowType: 'pkce'` + `detectSessionInUrl: true`. Env validation surfaces friendly errors via `supabaseConfigStatus`.
+- `app/src/lib/auth/session.svelte.ts` — session API: `signInWithPassword`, `signUpWithPassword`, `signInWithGoogle`, `signInWithGitHub`, `verifyEmailOtp`, `sendPasswordReset`, `requestEmailChange`, `updatePassword`, `verifyCurrentPassword` (OAuth-safe — fails-loud for no-email-identity accounts), `signOut`, `signOutAllDevices`, `resendSignupOtp`. Plus getters `hasEmailIdentity`, `primaryProvider` (`'email' \| 'google' \| 'github' \| 'unknown'`), `supabaseSession`. Module-scope `_allow()` token bucket: 5/min password, 6/min OTP, 5/min reauth.
+- `app/src/lib/auth/key-vault.ts` — BYOK API key encryption (PBKDF2 600k + AES-GCM).
+- `app/src/routes/login/+page.svelte` — password sign-in + OTP-based forgot-password (3-step). Magic-link UI removed in v1; deferred to future.
+- `app/src/routes/signup/+page.svelte` — sign-up + post-submit OTP entry. OAuth catch handlers use generic message (no provider-string leak).
+- `app/src/routes/auth/callback/+page.svelte` — polls `getSession()` for up to 4s after SDK auto-handles URL. Flow-aware error UI (email vs OAuth).
+- `app/src/lib/components/settings/SecurityPanel.svelte` — Account / Password / Email change / Sessions. Email masked by default with reveal+copy toggles. Provider badge (Google/GitHub/Email icon) shows how the user signed in.
+- `app/src/lib/components/shell/HeaderBar.svelte` — Sign-out button next to Settings (when auth enabled + signed in).
+
+Email templates (`docs/SUPABASE-EMAIL-TEMPLATES.md`) are OTP-first with `{{ .Token }}` shown prominently and `{{ .ConfirmationURL }}` as fallback. Logo via `<img src="{{ .SiteURL }}/cryptex-mark.png">`. All 5 templates use `{{ .SiteURL }}` so per-environment swaps require zero template edits.
+
+## When adding things
 
 ## When adding things
 - **New transformer**: create `src/transformers/<category>/<name>.js`, `npm run build`, add coverage to `tests/test_universal.js`. Pick `priority` using the guide in `BaseTransformer.js`. If updating the README catalog, use `build/readme-transform-section.js`.
 - **New tool/tab**: create `js/tools/MyTool.js` (extend `Tool`), create `templates/mytool.html` if Vue directives are needed, add it to the ordered list in `build/inject-tool-templates.js`, then `npm run build`.
+
+## Recent handoffs
+
+- `docs/2026-05-07-handoff-auth-hardening.md` — **most recent** — PKCE flow restored, OAuth-safe verifyCurrentPassword, email masking, sign-out button, rate-limit primitive
+- `docs/2026-05-06-handoff-redteam-expansion.md` — R1 retirement + E1-E5 expansion (36 mutators, 8 classifiers, 26 tools tabs)
+- `docs/DEPLOY-DOKPLOY-SUPABASE.md`, `docs/DEPLOY-OAUTH-AND-EMAIL.md`, `docs/DEPLOY-ANALYTICS-AND-ADSENSE.md` — operational guides
+- Active plan: `C:\Users\m4xx\.claude\plans\jazzy-gathering-kernighan.md` — security hardening Phases 0/1A/1B/2/3, 1A+2.1+2.2 done, Phase 3 deferred (deploy-contract changes)

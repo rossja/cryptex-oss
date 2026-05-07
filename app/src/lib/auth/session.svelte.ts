@@ -284,6 +284,15 @@ export const session = {
     if (!supabase) throw new Error('Auth not enabled');
     const email = _current?.email;
     if (!email) throw new Error('No email on session — cannot verify.');
+    // Safe-by-default: if the account has no email identity (OAuth-only),
+    // there's no password to verify against. Throw a clear sentinel so
+    // callers that forgot to gate on hasPassword can fail loudly instead
+    // of producing a confusing signInWithPassword error.
+    const identities = _session?.user?.identities ?? [];
+    const hasEmailIdentity = identities.some((i) => i.provider === 'email');
+    if (!hasEmailIdentity) {
+      throw new Error('No password to verify — this account uses OAuth.');
+    }
     if (!_allow('reauth', email.toLowerCase())) {
       // Mirror the existing "incorrect" error string so the throttle-hit
       // case is indistinguishable from a wrong password (preserves the
@@ -292,6 +301,32 @@ export const session = {
     }
     const { error } = await supabase.auth.signInWithPassword({ email, password: currentPassword });
     if (error) throw new Error('Current password is incorrect.');
+  },
+
+  /**
+   * Whether the current account has an email-identity (i.e. a password set).
+   * OAuth-only users return false. Settings UI gates the "current password"
+   * fields on this; the session API methods that use verifyCurrentPassword
+   * also fail-loud when called for OAuth-only accounts (see above).
+   */
+  get hasEmailIdentity(): boolean {
+    const identities = _session?.user?.identities ?? [];
+    return identities.some((i) => i.provider === 'email');
+  },
+
+  /**
+   * Primary sign-in method on the current account. Used by the Account
+   * panel to show "Signed in with Google / GitHub / Email" with the
+   * matching icon. Reads the FIRST identity in the user's identities
+   * array (Supabase orders them by `last_sign_in_at` so this is the
+   * most-recently-used method).
+   */
+  get primaryProvider(): 'email' | 'google' | 'github' | 'unknown' {
+    const identities = _session?.user?.identities ?? [];
+    if (identities.length === 0) return 'unknown';
+    const first = identities[0]?.provider ?? '';
+    if (first === 'email' || first === 'google' || first === 'github') return first;
+    return 'unknown';
   },
 
   async signOut(): Promise<void> {

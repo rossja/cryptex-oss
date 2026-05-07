@@ -13,6 +13,42 @@
   import LogOut from 'lucide-svelte/icons/log-out';
   import KeyRound from 'lucide-svelte/icons/key-round';
   import Loader from 'lucide-svelte/icons/loader-circle';
+  import Copy from 'lucide-svelte/icons/copy';
+  import Check2 from 'lucide-svelte/icons/check';
+
+  // ---------- Account panel state ----------
+  // Email is masked by default — full address only revealed on click. Stops
+  // shoulder-surfing / screenshot leaks of the user's identifier when the
+  // settings panel is open during a screen share.
+  let revealEmail = $state(false);
+  let copiedEmail = $state(false);
+
+  function maskEmail(email: string | null | undefined): string {
+    if (!email) return '—';
+    const at = email.indexOf('@');
+    if (at < 1) return '•••';
+    const [local, domain] = [email.slice(0, at), email.slice(at + 1)];
+    const dot = domain.lastIndexOf('.');
+    const tld = dot >= 0 ? domain.slice(dot) : '';
+    const domainHead = dot >= 0 ? domain.slice(0, dot) : domain;
+    const m = (s: string, keepStart = 1, keepEnd = 0) =>
+      s.length <= keepStart + keepEnd
+        ? s
+        : s.slice(0, keepStart) + '•'.repeat(Math.max(2, s.length - keepStart - keepEnd)) + s.slice(s.length - keepEnd);
+    return `${m(local, 1, 1)}@${m(domainHead, 1, 0)}${tld}`;
+  }
+
+  async function copyEmail() {
+    const e = session.current?.email;
+    if (!e) return;
+    try {
+      await navigator.clipboard.writeText(e);
+      copiedEmail = true;
+      setTimeout(() => { copiedEmail = false; }, 1500);
+    } catch {
+      // copy failed (clipboard blocked) — fall back silently; user can still reveal + select.
+    }
+  }
 
   // ---------- Password change state ----------
   let currentPassword = $state('');
@@ -22,10 +58,10 @@
   let busy = $state(false);
   let error = $state<string | null>(null);
 
-  const hasPassword = $derived.by(() => {
-    const identities = session.supabaseSession?.user?.identities ?? [];
-    return identities.some((i) => i.provider === 'email');
-  });
+  // Derived from the session API helper so the rule definition lives in
+  // one place (and so future callers reading session.hasEmailIdentity get
+  // the same answer the panel uses).
+  const hasPassword = $derived(session.hasEmailIdentity);
 
   const rules = $derived([
     { label: 'At least 8 characters', ok: newPassword.length >= 8 },
@@ -149,8 +185,55 @@
       <h2 class="font-serif text-lg">Account</h2>
     </div>
     <div class="rounded-lg border border-border/60 bg-background/30 p-3 text-sm">
-      <div class="text-[11px] uppercase tracking-wider text-muted-foreground">Signed in as</div>
-      <div class="mt-0.5 font-mono text-[13px] text-foreground break-all">{session.current?.email ?? '—'}</div>
+      <div class="flex items-center justify-between gap-2">
+        <div class="min-w-0 flex-1">
+          <div class="text-[11px] uppercase tracking-wider text-muted-foreground">Signed in as</div>
+          <div class="mt-0.5 flex items-center gap-2">
+            <span class="font-mono text-[13px] text-foreground break-all">
+              {revealEmail ? (session.current?.email ?? '—') : maskEmail(session.current?.email)}
+            </span>
+            <button
+              type="button"
+              onclick={() => (revealEmail = !revealEmail)}
+              aria-label={revealEmail ? 'Hide email' : 'Show email'}
+              title={revealEmail ? 'Hide email' : 'Show email'}
+              class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+            >
+              {#if revealEmail}<EyeOff size={12} />{:else}<Eye size={12} />{/if}
+            </button>
+            <button
+              type="button"
+              onclick={copyEmail}
+              aria-label="Copy email"
+              title="Copy email"
+              class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+            >
+              {#if copiedEmail}<Check2 size={12} class="text-emerald-500" />{:else}<Copy size={12} />{/if}
+            </button>
+          </div>
+        </div>
+        <!-- Provider badge — small icon + label so OAuth users see how they signed in -->
+        <span class="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border/60 bg-background/50 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+          {#if session.primaryProvider === 'google'}
+            <svg viewBox="0 0 18 18" class="h-3 w-3" aria-hidden="true">
+              <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"/>
+              <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.95v2.32A9 9 0 0 0 9 18z"/>
+              <path fill="#FBBC05" d="M3.97 10.72A5.4 5.4 0 0 1 3.68 9c0-.6.1-1.18.29-1.72V4.96H.95A9 9 0 0 0 0 9c0 1.45.35 2.83.96 4.04l3-2.32z"/>
+              <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58A8.97 8.97 0 0 0 9 0 9 9 0 0 0 .96 4.96l3.01 2.32C4.68 5.16 6.66 3.58 9 3.58z"/>
+            </svg>
+            Google
+          {:else if session.primaryProvider === 'github'}
+            <svg viewBox="0 0 24 24" class="h-3 w-3 fill-current" aria-hidden="true">
+              <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.56v-2c-3.2.69-3.87-1.37-3.87-1.37-.52-1.32-1.27-1.67-1.27-1.67-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.75 2.68 1.25 3.34.96.1-.74.4-1.25.72-1.54-2.55-.29-5.24-1.27-5.24-5.66 0-1.25.45-2.27 1.18-3.07-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.16 1.18a10.95 10.95 0 0 1 5.74 0c2.2-1.49 3.16-1.18 3.16-1.18.62 1.58.23 2.75.11 3.04.74.8 1.18 1.82 1.18 3.07 0 4.4-2.69 5.36-5.25 5.65.41.36.78 1.06.78 2.13v3.16c0 .31.21.66.79.55C20.21 21.39 23.5 17.08 23.5 12 23.5 5.65 18.35.5 12 .5z"/>
+            </svg>
+            GitHub
+          {:else if session.primaryProvider === 'email'}
+            <Mail size={10} /> Email
+          {:else}
+            Account
+          {/if}
+        </span>
+      </div>
     </div>
   </div>
 
@@ -161,9 +244,13 @@
       <h2 class="font-serif text-lg">Password</h2>
     </div>
     <p class="text-sm text-muted-foreground">
-      {hasPassword
-        ? 'Change your password — you\'ll need your current one to confirm.'
-        : 'You signed in via OAuth or email code. Set a password to enable email + password sign-in.'}
+      {#if hasPassword}
+        Change your password — you'll need your current one to confirm.
+      {:else if session.primaryProvider === 'google' || session.primaryProvider === 'github'}
+        You signed in via {session.primaryProvider === 'google' ? 'Google' : 'GitHub'}. You don't have a password — keep using OAuth, or set one below to enable email + password sign-in as an alternative.
+      {:else}
+        You signed in via email code. Set a password below to enable email + password sign-in.
+      {/if}
     </p>
 
     <form onsubmit={(e) => { e.preventDefault(); void submit(); }} class="flex flex-col gap-3 max-w-sm">
@@ -263,6 +350,8 @@
       We'll send a 6-digit code to the new address. Enter it to confirm the change.
       {#if hasPassword}
         Re-auth with your current password is required.
+      {:else}
+        Verifying ownership of the new email is the security check.
       {/if}
     </p>
 
