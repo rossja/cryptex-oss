@@ -3,8 +3,8 @@
   import type { AttachmentRow } from '$lib/chat/types';
   import type { ContentPart } from '$lib/ai/types';
   import { sendTurn } from '$lib/chat/dispatch';
-  import { byCategory } from '$lib/chat/techniques/registry';
-  import type { Technique } from '$lib/chat/techniques/types';
+  import { byCategory } from '$lib/techniques/registry';
+  import type { Technique } from '$lib/techniques/types';
   import { repo } from '$lib/chat/repo';
   import { extractAttachment } from '$lib/chat/attachments/extract';
   import { catalog } from '$lib/ai/catalog.svelte';

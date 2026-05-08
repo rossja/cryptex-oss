@@ -4,7 +4,7 @@
   import ToolCallCard from './ToolCallCard.svelte';
   import CodeBlock from './CodeBlock.svelte';
   import SlashCommandBlock from './SlashCommandBlock.svelte';
-  import { find as findTechnique } from '$lib/chat/techniques/registry';
+  import { find as findTechnique } from '$lib/techniques/registry';
   import { forkChat } from '$lib/chat/dispatch';
   import { goto } from '$app/navigation';
   import { base } from '$app/paths';

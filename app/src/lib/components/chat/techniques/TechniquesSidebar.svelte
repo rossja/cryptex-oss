@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { allTechniques, search } from '$lib/chat/techniques/registry';
+  import { allTechniques, search } from '$lib/techniques/registry';
   import { pushRecent } from '$lib/stores/techniqueRecents.svelte';
-  import type { Technique, TechniqueCategory } from '$lib/chat/techniques/types';
+  import type { Technique, TechniqueCategory } from '$lib/techniques/types';
   import type { ChatRow } from '$lib/chat/types';
   import { repo } from '$lib/chat/repo';
   import TechniqueSearchInput from './TechniqueSearchInput.svelte';

@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { allTechniques } from '$lib/chat/techniques/registry';
-  import type { Technique } from '$lib/chat/techniques/types';
+  import { allTechniques } from '$lib/techniques/registry';
+  import type { Technique } from '$lib/techniques/types';
   import { techniqueRecents, pushRecent } from '$lib/stores/techniqueRecents.svelte';
   import { notify } from '$lib/stores/toast.svelte';
   import { onMount } from 'svelte';

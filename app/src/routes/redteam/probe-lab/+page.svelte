@@ -1,6 +1,6 @@
 <script lang="ts">
   import { fanout, type FanoutResult, type FanoutItem } from '$lib/redteam/fanout';
-  import { mutatorTechniques } from '$lib/chat/techniques/from-mutators';
+  import { mutatorTechniques } from '$lib/techniques/from-mutators';
   import { chat as gatewayChat, streamChat as gatewayStreamChat, hasAnyKey as hasApiKey } from '$lib/ai/gateway';
   import ModelPickerV2 from '$lib/components/ai/ModelPickerV2.svelte';
   import NoProviderBanner from '$lib/components/ai/NoProviderBanner.svelte';

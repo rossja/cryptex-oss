@@ -1,4 +1,4 @@
-import { find } from './techniques/registry';
+import { find } from '$lib/techniques/registry';
 import type { ToolDef } from '$lib/ai/types';
 import { z } from 'zod';
 

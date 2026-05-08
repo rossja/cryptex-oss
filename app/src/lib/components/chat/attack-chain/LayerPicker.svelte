@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { allTechniques } from '$lib/chat/techniques/registry';
-  import type { Technique } from '$lib/chat/techniques/types';
+  import { allTechniques } from '$lib/techniques/registry';
+  import type { Technique } from '$lib/techniques/types';
   import { Combobox, type ComboboxOption } from '$lib/components/ui/combobox';
   import LayerParamEditor from './LayerParamEditor.svelte';
   import { PERSONAS, PERSONA_IDS } from '$lib/chat/chain-v4/personas';

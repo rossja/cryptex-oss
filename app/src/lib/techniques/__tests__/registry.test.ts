@@ -2,11 +2,6 @@ import { describe, it, expect } from 'vitest';
 import { allTechniques, byCategory, find, search } from '../registry';
 
 describe('technique registry', () => {
-  it('contains transformers (category=transform) from $lib/transformers/registry', () => {
-    const t = byCategory('transform');
-    expect(t.length).toBeGreaterThan(100); // we expect 162 but registry may filter
-  });
-
   it('contains exactly the 36 PromptCraft mutators (post-R1 + E1 + E2 + E4 + E5)', () => {
     const m = byCategory('mutate');
     expect(m.map(x => x.id).sort()).toEqual(
@@ -49,18 +44,6 @@ describe('technique registry', () => {
     }
   });
 
-  it('contains the engine-backed godmode technique', () => {
-    const g = byCategory('godmode');
-    expect(g.length).toBeGreaterThanOrEqual(1);
-    const engine = g.find((t) => t.id === 'godmode_engine_v2');
-    expect(engine).toBeDefined();
-    // Engine-backed godmode runs via the panel UI (runGodmode client), not
-    // via apply(); local=true tells the runner to not attempt a server
-    // round-trip — the panel owns the lifecycle.
-    expect(engine!.local).toBe(true);
-    expect(engine!.apply).toBeTypeOf('function');
-  });
-
   it('find returns by id', () => {
     expect(find('rephrase')?.id).toBe('rephrase');
     expect(find('nonexistent')).toBeUndefined();
@@ -101,9 +84,10 @@ describe('technique registry', () => {
     expect(comp.every(x => x.local === false)).toBe(true);
   });
 
-  it('allTechniques total is >= 205 (transformers + 36 mutators + 8 classifier + 4 composites + 3 modes + 1 godmode)', () => {
-    // transformer count is ~159-162 depending on env; test just verifies sum is plausible
-    expect(allTechniques().length).toBeGreaterThanOrEqual(205);
+  it('allTechniques total is >= 50 (36 mutators + 8 classifier + 4 composites + 3 modes + prefills)', () => {
+    // godmode and transformers are dropped from this registry (closed-product only);
+    // remaining: 36 mutators + 8 classifiers + 4 composites + 3 modes + prefills
+    expect(allTechniques().length).toBeGreaterThanOrEqual(50);
   });
 
   it('every production local-template mutator produces >=100 chars of substantive context around a short input', () => {

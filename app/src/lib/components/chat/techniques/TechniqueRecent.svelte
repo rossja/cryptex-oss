@@ -1,8 +1,8 @@
 <script lang="ts">
   import { techniqueRecents } from '$lib/stores/techniqueRecents.svelte';
-  import { find } from '$lib/chat/techniques/registry';
+  import { find } from '$lib/techniques/registry';
   import TechniqueRow from './TechniqueRow.svelte';
-  import type { Technique } from '$lib/chat/techniques/types';
+  import type { Technique } from '$lib/techniques/types';
   type Props = { onClick: (t: Technique) => void };
   let { onClick }: Props = $props();
 

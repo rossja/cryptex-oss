@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Technique } from '$lib/chat/techniques/types';
+  import type { Technique } from '$lib/techniques/types';
   import TechniqueRow from './TechniqueRow.svelte';
   import ChevronRight from 'lucide-svelte/icons/chevron-right';
   type Props = { label: string; items: Technique[]; onClick: (t: Technique) => void };

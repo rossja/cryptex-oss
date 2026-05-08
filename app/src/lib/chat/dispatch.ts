@@ -2,7 +2,7 @@ import { streamChat, chat as gatewayChat } from '$lib/ai/gateway';
 import { tuneParams } from '$lib/ai/prompt-scaffold';
 import type { ChatRow, MessageRow, ToolCallLog, AttackSessionRow } from './types';
 import { repo } from './repo';
-import { find as findTechnique } from './techniques/registry';
+import { find as findTechnique } from '$lib/techniques/registry';
 import { parseSlash } from './slashParser';
 import { buildToolSchemas } from './toolSchemas';
 import type { ChatMessage, ChatRequest, ContentPart } from '$lib/ai/types';

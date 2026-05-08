@@ -1,9 +1,9 @@
 <script lang="ts">
   import { base } from '$app/paths';
   import { transformerCount, categories } from '$lib/transformers/registry';
-  import { mutatorTechniques } from '$lib/chat/techniques/from-mutators';
-  import { classifierTechniques } from '$lib/chat/techniques/from-classifier';
-  import { compositeTechniques } from '$lib/chat/techniques/from-composites';
+  import { mutatorTechniques } from '$lib/techniques/from-mutators';
+  import { classifierTechniques } from '$lib/techniques/from-classifier';
+  import { compositeTechniques } from '$lib/techniques/from-composites';
   import Lock from 'lucide-svelte/icons/lock';
   import KeyRound from 'lucide-svelte/icons/key-round';
   import Cpu from 'lucide-svelte/icons/cpu';

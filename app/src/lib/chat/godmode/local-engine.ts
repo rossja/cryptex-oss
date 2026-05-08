@@ -13,10 +13,10 @@
  * the existing `gateway.chat` + `gateway.streamChat` primitives.
  */
 
-import { mutatorTechniques } from '$lib/chat/techniques/from-mutators';
+import { mutatorTechniques } from '$lib/techniques/from-mutators';
 import { STRATEGIES } from '$lib/chat/chain/orchestrator-strategies';
 import type { ChatMessage, StreamEvent } from '$lib/ai/types';
-import type { Technique } from '$lib/chat/techniques/types';
+import type { Technique } from '$lib/techniques/types';
 
 export interface LocalGodmodeContext {
   task: string;

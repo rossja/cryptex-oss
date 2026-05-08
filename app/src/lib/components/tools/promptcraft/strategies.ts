@@ -12,9 +12,9 @@
  * template content from scratch.
  */
 
-import { getMutatorSpecs } from '$lib/chat/techniques/from-mutators';
-import { buildMutatorSystem } from '$lib/chat/techniques/from-mutators';
-import { find as findTechnique, byCategory } from '$lib/chat/techniques/registry';
+import { getMutatorSpecs } from '$lib/techniques/from-mutators';
+import { buildMutatorSystem } from '$lib/techniques/from-mutators';
+import { find as findTechnique, byCategory } from '$lib/techniques/registry';
 
 /**
  * @deprecated Use `getSystemPrompt(techniqueId, customInstruction)` directly,

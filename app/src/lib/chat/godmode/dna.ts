@@ -1,9 +1,9 @@
-import { buildMutatorSystemById } from '../techniques/from-mutators';
-import { getClassifierSpecs } from '../techniques/from-classifier';
-import { buildCompositeById } from '../techniques/from-composites';
-import { buildPrefillPairById } from '../techniques/from-prefills';
-import { modes } from '../techniques/modes';
-import { allTechniques } from '../techniques/registry';
+import { buildMutatorSystemById } from '$lib/techniques/from-mutators';
+import { getClassifierSpecs } from '$lib/techniques/from-classifier';
+import { buildCompositeById } from '$lib/techniques/from-composites';
+import { buildPrefillPairById } from '$lib/techniques/from-prefills';
+import { modes } from '$lib/techniques/modes';
+import { allTechniques } from '$lib/techniques/registry';
 
 /**
  * TEMP_BUCKETS — 3 discrete temperatures the ranker/engine can select from.

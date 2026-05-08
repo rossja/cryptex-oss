@@ -10,7 +10,7 @@
   import Zap from 'lucide-svelte/icons/zap';
   import Sparkles from 'lucide-svelte/icons/sparkles';
   import { lastChatModel } from '$lib/stores/lastChatModel.svelte';
-  import { GODMODE_ENGINE_ENABLED } from '$lib/chat/techniques/godmode';
+  const GODMODE_ENGINE_ENABLED = import.meta.env.PUBLIC_GODMODE_ENGINE_ENABLED !== 'false';
   import { session } from '$lib/auth/session.svelte';
 
   async function signOut() {

@@ -1,22 +1,18 @@
 import type { Technique, TechniqueCategory } from './types';
-import { transformerTechniques } from './from-transformers';
 import { mutatorTechniques } from './from-mutators';
 import { classifierTechniques } from './from-classifier';
 import { compositeTechniques } from './from-composites';
 import { modes } from './modes';
-import { godmodes } from './godmode';
 import { prefillTechniques } from './from-prefills';
 
 let _all: Technique[] | null = null;
 
 function build(): Technique[] {
   return [
-    ...transformerTechniques(),
     ...mutatorTechniques(),
     ...classifierTechniques(),
     ...compositeTechniques(),
     ...modes,
-    ...godmodes,
     ...prefillTechniques()
   ];
 }

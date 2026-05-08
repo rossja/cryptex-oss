@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Technique } from '$lib/chat/techniques/types';
+  import type { Technique } from '$lib/techniques/types';
   type Props = { technique: Technique; onClick: (t: Technique) => void };
   let { technique, onClick }: Props = $props();
 
