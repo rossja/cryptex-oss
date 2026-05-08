@@ -6,32 +6,22 @@
   import { lastUsed } from '$lib/stores/lastUsed.svelte';
   import { sessionLog } from '$lib/stores/sessionLog.svelte';
   import { notify } from '$lib/stores/toast.svelte';
-  import { session } from '$lib/auth/session.svelte';
-  import { featureFlags } from '$lib/config/featureFlags';
   import Trash2 from 'lucide-svelte/icons/trash-2';
   import Sun from 'lucide-svelte/icons/sun';
   import Moon from 'lucide-svelte/icons/moon';
   import Monitor from 'lucide-svelte/icons/monitor';
-  import Shield from 'lucide-svelte/icons/shield';
   import KeyRound from 'lucide-svelte/icons/key-round';
   import Database from 'lucide-svelte/icons/database';
   import Palette from 'lucide-svelte/icons/palette';
-  import UserCog from 'lucide-svelte/icons/user-cog';
   import Sparkles from 'lucide-svelte/icons/sparkles';
-  import { consent, isAdSenseConfigured } from '$lib/stores/consent.svelte';
-  import { ensureAdSenseState } from '$lib/ads/adsense.svelte';
-  import { ensureGaState, isGaConfigured } from '$lib/analytics/ga.svelte';
   import ProvidersPanel from '$lib/components/settings/ProvidersPanel.svelte';
-  import SecurityPanel from '$lib/components/settings/SecurityPanel.svelte';
 
-  type SectionId = 'account' | 'providers' | 'theme' | 'data' | 'consent';
+  type SectionId = 'providers' | 'theme' | 'data';
 
   const sections: Array<{ id: SectionId; label: string; icon: typeof KeyRound; visible: () => boolean }> = [
-    { id: 'account',   label: 'Account',     icon: UserCog,  visible: () => featureFlags.authEnabled && session.isSignedIn },
     { id: 'providers', label: 'AI Providers', icon: KeyRound, visible: () => true },
     { id: 'theme',     label: 'Appearance',  icon: Palette,  visible: () => true },
-    { id: 'data',      label: 'Local Data',  icon: Database, visible: () => true },
-    { id: 'consent',   label: 'Privacy',     icon: Shield,   visible: () => isAdSenseConfigured() || isGaConfigured() }
+    { id: 'data',      label: 'Local Data',  icon: Database, visible: () => true }
   ];
 
   const visibleSections = $derived(sections.filter((s) => s.visible()));
@@ -73,19 +63,6 @@
   afterNavigate(({ type, to }) => {
     if (type === 'link' || type === 'goto') applyHashIfPresent(to?.url.hash ?? '');
   });
-
-  function setConsent(next: 'accepted' | 'rejected' | 'unknown') {
-    if (next === 'accepted') consent.accept();
-    else if (next === 'rejected') consent.reject();
-    else consent.reset();
-    ensureAdSenseState();
-    ensureGaState();
-    notify.success(
-      next === 'accepted' ? 'Analytics + ads enabled' :
-      next === 'rejected' ? 'Analytics + ads disabled' :
-      'Banner will re-show on next reload'
-    );
-  }
 
   function setMode(m: 'light' | 'dark' | 'system') {
     theme.set(m);
@@ -160,9 +137,7 @@
 
     <!-- Content panel -->
     <div class="min-w-0 space-y-6">
-      {#if active === 'account'}
-        <SecurityPanel />
-      {:else if active === 'providers'}
+      {#if active === 'providers'}
         <ProvidersPanel />
       {:else if active === 'theme'}
         <div class="space-y-3 rounded-xl border border-border bg-card/60 p-5 shadow-glass">
@@ -246,43 +221,6 @@
           </div>
           <p class="text-[11px] text-muted-foreground">
             Chat conversations are stored separately in <code class="rounded bg-muted/40 px-1 py-0.5 font-mono">cryptex-chat</code> (IndexedDB) and managed from the chat sidebar.
-          </p>
-        </div>
-      {:else if active === 'consent'}
-        <div class="space-y-3 rounded-xl border border-border bg-card/60 p-5 shadow-glass">
-          <div class="flex items-center gap-2">
-            <Shield size={16} class="text-primary" />
-            <h2 class="font-serif text-lg">Privacy &amp; consent</h2>
-          </div>
-          <p class="text-sm text-muted-foreground">
-            {#if isGaConfigured() && isAdSenseConfigured()}
-              This deploy includes anonymous analytics (Google Analytics 4) and shows AdSense ads on the
-              Guide / About / Privacy / Terms pages only. Tool pages and chat are 100% ad-free and never load
-              the AdSense script. IP addresses are anonymized at collection.
-            {:else if isAdSenseConfigured()}
-              This deploy shows AdSense ads on the Guide / About / Privacy / Terms pages only.
-              Tool pages and chat never show ads and never load the AdSense script.
-            {:else if isGaConfigured()}
-              This deploy uses anonymous Google Analytics 4 to count page views. IP addresses are
-              anonymized at collection.
-            {/if}
-            Revoke consent any time.
-          </p>
-          <div class="inline-flex gap-1 rounded-lg border border-border bg-card/40 p-1">
-            {#each [['accepted', 'Accepted'], ['rejected', 'Rejected'], ['unknown', 'Ask again']] as [id, label]}
-              <button
-                type="button"
-                onclick={() => setConsent(id as 'accepted' | 'rejected' | 'unknown')}
-                class={consent.value === id
-                  ? 'inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground shadow-primary'
-                  : 'inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground'}
-              >
-                {label}
-              </button>
-            {/each}
-          </div>
-          <p class="text-xs text-muted-foreground">
-            Current: <strong class="text-foreground">{consent.value}</strong>
           </p>
         </div>
       {/if}

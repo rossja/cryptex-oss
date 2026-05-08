@@ -9,11 +9,7 @@
 # `uv`. The web image is the deploy target for Dokploy / Coolify / plain Docker.
 #
 # Build-time args (override in docker-compose / Dokploy "Build Variables"):
-#   BASE_PATH              — subpath for the app (e.g. "/cryptex"). Empty for root.
-#   PUBLIC_ADSENSE_CLIENT  — optional Google AdSense publisher id (ca-pub-XXXX…).
-#                            Unset = no ads, no consent banner, no Google script.
-#   PUBLIC_GA_ID           — optional Google Analytics 4 measurement id (G-XXXXXXXX).
-#                            Unset = no analytics, no gtag script, no events.
+#   BASE_PATH  — subpath for the app (e.g. "/cryptex"). Empty for root.
 
 # ---------- Stage 1: build the SvelteKit app ----------
 FROM node:20-alpine AS builder
@@ -21,56 +17,15 @@ WORKDIR /build
 
 # Build arguments (must be declared before first use)
 ARG BASE_PATH=""
-ARG PUBLIC_ADSENSE_CLIENT=""
-ARG PUBLIC_GA_ID=""
-# Supabase auth (D4). When unset, defaults are empty — the auth stack falls
-# back to local-only mode (no breaking change to existing deploys). Set all
-# three to enable sign-in: VITE_AUTH_ENABLED=true + the two PUBLIC_SUPABASE_*.
-ARG VITE_AUTH_ENABLED=""
-ARG PUBLIC_SUPABASE_URL=""
-ARG PUBLIC_SUPABASE_ANON_KEY=""
-ARG PUBLIC_GODMODE_LOCAL_ENABLED="true"
-# Optional Subresource Integrity (SRI) hashes for the third-party AdSense
-# and GA scripts. Format: `sha384-<base64>`. Default empty = no integrity
-# attribute set (current behavior). Operators who want SRI hardening fetch
-# the live script body, run `cat script.js | openssl dgst -sha384 -binary | base64`,
-# and pass it here. AdSense + GA rotate scripts often, so a stale hash
-# silently breaks ads/analytics — refresh on a schedule when used.
-ARG PUBLIC_ADSENSE_SRI=""
-ARG PUBLIC_GA_SRI=""
 
 # Expose them as environment variables so Vite's build step inlines them
 # into the static output. (PUBLIC_* and VITE_* are read at BUILD time by
 # SvelteKit / Vite — runtime container env has no effect on the served
 # bundle, so they MUST be passed as build args, not just runtime env.)
-ENV BASE_PATH=${BASE_PATH} \
-    PUBLIC_ADSENSE_CLIENT=${PUBLIC_ADSENSE_CLIENT} \
-    PUBLIC_GA_ID=${PUBLIC_GA_ID} \
-    PUBLIC_ADSENSE_SRI=${PUBLIC_ADSENSE_SRI} \
-    PUBLIC_GA_SRI=${PUBLIC_GA_SRI} \
-    VITE_AUTH_ENABLED=${VITE_AUTH_ENABLED} \
-    PUBLIC_SUPABASE_URL=${PUBLIC_SUPABASE_URL} \
-    PUBLIC_SUPABASE_ANON_KEY=${PUBLIC_SUPABASE_ANON_KEY} \
-    PUBLIC_GODMODE_LOCAL_ENABLED=${PUBLIC_GODMODE_LOCAL_ENABLED}
+ENV BASE_PATH=${BASE_PATH}
 
-# Visible build-arg diagnostic — prints to the Dokploy build log so you can
-# tell from the build output whether the env vars actually reached the build
-# step. Values are masked (presence/length only) so the log is safe to share
-# for support. If a value shows MISSING, the variable wasn't passed as a
-# Docker build arg — see docs/DEPLOY-DOKPLOY-SUPABASE.md.
-RUN sh -c '\
-  status() { if [ -n "$1" ]; then echo "set, length=$(printf %s "$1" | wc -c | tr -d " ")"; else echo "MISSING"; fi; } ; \
-  echo "[cryptex-build] BASE_PATH=$(status "$BASE_PATH")" ; \
-  echo "[cryptex-build] VITE_AUTH_ENABLED=${VITE_AUTH_ENABLED:-MISSING}" ; \
-  echo "[cryptex-build] PUBLIC_SUPABASE_URL=$(status "$PUBLIC_SUPABASE_URL")" ; \
-  echo "[cryptex-build] PUBLIC_SUPABASE_ANON_KEY=$(status "$PUBLIC_SUPABASE_ANON_KEY")" ; \
-  echo "[cryptex-build] PUBLIC_GODMODE_LOCAL_ENABLED=${PUBLIC_GODMODE_LOCAL_ENABLED:-MISSING}" ; \
-  echo "[cryptex-build] PUBLIC_ADSENSE_CLIENT=${PUBLIC_ADSENSE_CLIENT:-MISSING}" ; \
-  echo "[cryptex-build] PUBLIC_GA_ID=${PUBLIC_GA_ID:-MISSING}" ; \
-  echo "[cryptex-build] PUBLIC_ADSENSE_SRI=$(status "$PUBLIC_ADSENSE_SRI")" ; \
-  echo "[cryptex-build] PUBLIC_GA_SRI=$(status "$PUBLIC_GA_SRI")" ; \
-'
-
+# Visible build-arg diagnostic — prints to the build log.
+RUN sh -c '  status() { if [ -n "$1" ]; then echo "set, length=$(printf %s "$1" | wc -c | tr -d " ")"; else echo "MISSING"; fi; } ;   echo "[cryptex-build] BASE_PATH=$(status "$BASE_PATH")" ; '
 # The SvelteKit build reads transformers from ../src/transformers via a Vite
 # alias, so we bring both trees into the build context.
 COPY src/transformers ./src/transformers

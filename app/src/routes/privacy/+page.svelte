@@ -5,11 +5,8 @@
   import Database from 'lucide-svelte/icons/database';
   import Cookie from 'lucide-svelte/icons/cookie';
   import Mail from 'lucide-svelte/icons/mail';
-  import { isAdSenseConfigured } from '$lib/stores/consent.svelte';
 
-  const adsEnabled = isAdSenseConfigured();
-
-  const lastUpdated = '2026-05-07';
+  const lastUpdated = '2026-05-09';
 </script>
 
 <svelte:head>
@@ -45,11 +42,8 @@
       <li>• We do <strong class="text-foreground">not</strong> sell, share, or rent your data. We have no advertising-network customers.</li>
       <li>• Tool inputs (text you encode, decode, transform) <strong class="text-foreground">never leave your browser</strong>.</li>
       <li>• When you use the AI chat or PromptCraft, requests go directly from your browser to the AI provider you configured (OpenRouter, Anthropic, etc.) — we are not in the middle.</li>
-      <li>• If you create an account, your email + auth metadata is stored by Supabase. Your chat history stays in your browser's IndexedDB.</li>
-      <li>• We use minimal anonymous analytics (page views, browser/OS class) to understand traffic — only when you accept the cookie banner.</li>
-      {#if adsEnabled}
-        <li>• Google AdSense ads appear on this page, the Guide, and About — only after you accept the consent banner.</li>
-      {/if}
+      <li>• There are no accounts. Your chat history and API keys stay in your browser's IndexedDB and localStorage respectively.</li>
+      <li>• No analytics, no ads, no telemetry. This is a fully local-first, open-source build.</li>
     </ul>
   </section>
 
@@ -78,16 +72,6 @@
 
     <div class="space-y-4 text-sm leading-relaxed">
       <div>
-        <h3 class="font-medium text-foreground">Account email (only if you sign up)</h3>
-        <p class="text-muted-foreground">
-          When you create an account, your email address and authentication metadata (sign-in
-          provider, last seen, password hash) are stored by Supabase, our auth provider. We use
-          this only to issue your session and let you sync chats across devices. Delete your
-          account at any time from <a href="{base}/settings" class="text-primary underline-offset-2 hover:underline">Settings → Account</a>.
-        </p>
-      </div>
-
-      <div>
         <h3 class="font-medium text-foreground">Cookies / local storage</h3>
         <p class="text-muted-foreground">
           We use browser <code class="rounded bg-muted/40 px-1 py-0.5 font-mono">localStorage</code> and <code class="rounded bg-muted/40 px-1 py-0.5 font-mono">IndexedDB</code> for app state — your theme,
@@ -96,30 +80,6 @@
           from your browser settings or via <a href="{base}/settings#data" class="text-primary underline-offset-2 hover:underline">Settings → Local data → Clear</a>.
         </p>
       </div>
-
-      <div>
-        <h3 class="font-medium text-foreground">Anonymous analytics</h3>
-        <p class="text-muted-foreground">
-          We may load Google Analytics 4 to count page views and broad audience segments
-          (browser, OS, country at city resolution at most). IP addresses are anonymized at
-          collection. Analytics only loads <strong class="text-foreground">after you accept</strong> the cookie banner. Decline,
-          and no analytics script is loaded. Change your decision at any time from
-          <a href="{base}/settings#consent" class="text-primary underline-offset-2 hover:underline">Settings → Privacy</a>.
-        </p>
-      </div>
-
-      {#if adsEnabled}
-        <div>
-          <h3 class="font-medium text-foreground">Advertising (Guide, About, Privacy, Terms only)</h3>
-          <p class="text-muted-foreground">
-            This deploy includes Google AdSense on the Guide, About, Privacy, and Terms pages.
-            Tool pages and the chat surface are <strong class="text-foreground">100% ad-free</strong> and never load AdSense scripts.
-            AdSense uses cookies to serve relevant ads and measure performance. You can opt out
-            of personalized advertising at <a href="https://www.google.com/settings/ads" target="_blank" rel="noopener noreferrer" class="text-primary underline-offset-2 hover:underline">google.com/settings/ads</a>.
-            Decline our cookie banner, and the AdSense script is never loaded.
-          </p>
-        </div>
-      {/if}
 
       <div>
         <h3 class="font-medium text-foreground">Outbound calls to AI providers (only when you choose to)</h3>
@@ -138,11 +98,6 @@
   <section class="space-y-3">
     <h2 class="font-serif text-2xl">Third-party services we use</h2>
     <ul class="space-y-1.5 text-sm leading-relaxed text-muted-foreground">
-      <li>• <strong class="text-foreground">Supabase</strong> — authentication (only if you sign up). <a href="https://supabase.com/privacy" target="_blank" rel="noopener noreferrer" class="text-primary underline-offset-2 hover:underline">Privacy</a>.</li>
-      <li>• <strong class="text-foreground">Google Analytics 4</strong> — anonymous page views (only with consent). <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" class="text-primary underline-offset-2 hover:underline">Privacy</a>.</li>
-      {#if adsEnabled}
-        <li>• <strong class="text-foreground">Google AdSense</strong> — display ads on Guide / About / Privacy / Terms only (with consent). <a href="https://policies.google.com/technologies/ads" target="_blank" rel="noopener noreferrer" class="text-primary underline-offset-2 hover:underline">Ads policy</a>.</li>
-      {/if}
       <li>• <strong class="text-foreground">AI providers you configure yourself</strong> (OpenRouter, Anthropic, OpenAI, Groq, etc.) — receive your prompts when you call them. You bring your own key.</li>
       <li>• <strong class="text-foreground">GitHub Pages / your own VPS</strong> — static hosting; standard webserver request logs may be retained per the host's policy.</li>
     </ul>
@@ -157,8 +112,7 @@
     </p>
     <ul class="space-y-1.5 text-sm leading-relaxed text-muted-foreground">
       <li>• <strong class="text-foreground">Export</strong> — chat data: <a href="{base}/dataset" class="text-primary underline-offset-2 hover:underline">/dataset</a>; tool history: built into Settings.</li>
-      <li>• <strong class="text-foreground">Delete</strong> — <a href="{base}/settings#data" class="text-primary underline-offset-2 hover:underline">Settings → Local data → Clear</a>; account: <a href="{base}/settings#account" class="text-primary underline-offset-2 hover:underline">Settings → Account</a>.</li>
-      <li>• <strong class="text-foreground">Withdraw consent</strong> — Settings → Privacy → set to "Rejected".</li>
+      <li>• <strong class="text-foreground">Delete</strong> — <a href="{base}/settings#data" class="text-primary underline-offset-2 hover:underline">Settings → Local data → Clear</a>; or clear your browser's localStorage / IndexedDB directly.</li>
       <li>• <strong class="text-foreground">Object / restrict</strong> — email us via the contact below.</li>
     </ul>
   </section>

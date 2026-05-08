@@ -11,7 +11,7 @@
  * `localStorage` (otherwise it would clear on tab close, defeating the
  * persisted preference).
  *
- * Surface used by `providers.svelte.ts` and the SecurityPanel toggle.
+ * Surface used by `providers.svelte.ts` and the ProvidersPanel ephemeral toggle.
  */
 
 const PREF_KEY = 'cryptex.settings.ephemeralKeys';

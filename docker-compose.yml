@@ -19,7 +19,6 @@
 #   2. Environment tab → set:
 #        DOMAIN=cryptex.your-domain.com    ← REQUIRED for HTTPS routing
 #        BASE_PATH=                         ← optional, leave empty
-#        PUBLIC_ADSENSE_CLIENT=             ← optional, omit = no ads
 #        TZ=UTC                             ← optional
 #   3. Ensure DNS A record points DOMAIN at your VPS public IP (required
 #      BEFORE first deploy, otherwise Let's Encrypt HTTP-01 challenge fails).
@@ -41,24 +40,7 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        BASE_PATH: "${BASE_PATH:-}"
-        PUBLIC_ADSENSE_CLIENT: "${PUBLIC_ADSENSE_CLIENT:-}"
-        PUBLIC_GA_ID: "${PUBLIC_GA_ID:-}"
-        # Supabase auth (D4). All four MUST be passed as build args because
-        # SvelteKit/Vite inline VITE_* and PUBLIC_* at BUILD time, not
-        # runtime. Setting them only in `environment` below has no effect on
-        # the static bundle — the browser will see them as undefined and the
-        # auth surface will say "Auth is disabled in this build".
-        VITE_AUTH_ENABLED: "${VITE_AUTH_ENABLED:-}"
-        PUBLIC_SUPABASE_URL: "${PUBLIC_SUPABASE_URL:-}"
-        PUBLIC_SUPABASE_ANON_KEY: "${PUBLIC_SUPABASE_ANON_KEY:-}"
-        PUBLIC_GODMODE_LOCAL_ENABLED: "${PUBLIC_GODMODE_LOCAL_ENABLED:-true}"
-        # Optional SRI hashes for AdSense + GA scripts. Format
-        # `sha384-<base64>`. Default empty = no integrity attribute set.
-        # See docs/DEPLOY-ANALYTICS-AND-ADSENSE.md for refresh procedure.
-        PUBLIC_ADSENSE_SRI: "${PUBLIC_ADSENSE_SRI:-}"
-        PUBLIC_GA_SRI: "${PUBLIC_GA_SRI:-}"
-
+        BASE_PATH: "${BASE_PATH:-}" 
     environment:
       TZ: "${TZ:-UTC}"
 
