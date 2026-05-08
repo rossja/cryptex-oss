@@ -9,28 +9,29 @@
     type GlitchEffect
   } from '$lib/redteam/glitch-tokens';
   import { notify } from '$lib/stores/toast.svelte';
+  import { useToolState } from '$lib/stores/tool-state.svelte';
   import Copy from 'lucide-svelte/icons/copy';
   import Zap from 'lucide-svelte/icons/zap';
   import AlertTriangle from 'lucide-svelte/icons/triangle-alert';
   import UsageHint from '$lib/components/shell/UsageHint.svelte';
 
   const families = listFamilies();
-  let scanInput = $state('');
-  let selectedFamily = $state<ModelFamily>('gpt-4');
-  let severityFilter = $state<GlitchSeverity | 'all'>('all');
-  let effectFilter = $state<GlitchEffect | 'all'>('all');
-  let searchTerm = $state('');
+  const scanInput = useToolState<string>('glitch-tokens', 'scanInput', '');
+  const selectedFamily = useToolState<ModelFamily>('glitch-tokens', 'family', 'gpt-4');
+  const severityFilter = useToolState<GlitchSeverity | 'all'>('glitch-tokens', 'severity', 'all');
+  const effectFilter = useToolState<GlitchEffect | 'all'>('glitch-tokens', 'effect', 'all');
+  const searchTerm = useToolState<string>('glitch-tokens', 'search', '');
 
   const detected = $derived(
-    scanInput.length > 0 ? findGlitchTokens(scanInput, selectedFamily) : []
+    scanInput.value.length > 0 ? findGlitchTokens(scanInput.value, selectedFamily.value) : []
   );
 
   const familyTokens = $derived.by(() => {
-    let list = GLITCH_TOKENS.filter((g) => g.family.includes(selectedFamily));
-    if (severityFilter !== 'all') list = list.filter((g) => g.severity === severityFilter);
-    if (effectFilter !== 'all') list = list.filter((g) => g.effect === effectFilter);
-    if (searchTerm) {
-      const q = searchTerm.toLowerCase();
+    let list = GLITCH_TOKENS.filter((g) => g.family.includes(selectedFamily.value));
+    if (severityFilter.value !== 'all') list = list.filter((g) => g.severity === severityFilter.value);
+    if (effectFilter.value !== 'all') list = list.filter((g) => g.effect === effectFilter.value);
+    if (searchTerm.value) {
+      const q = searchTerm.value.toLowerCase();
       list = list.filter(
         (g) =>
           g.token.toLowerCase().includes(q) ||
@@ -42,7 +43,7 @@
   });
 
   const familyCounts = $derived.by(() => {
-    const all = GLITCH_TOKENS.filter((g) => g.family.includes(selectedFamily));
+    const all = GLITCH_TOKENS.filter((g) => g.family.includes(selectedFamily.value));
     return {
       all: all.length,
       high: all.filter((g) => g.severity === 'high').length,
@@ -55,7 +56,7 @@
   const familyEffects = $derived.by<GlitchEffect[]>(() => {
     const set = new Set<GlitchEffect>();
     for (const g of GLITCH_TOKENS) {
-      if (g.family.includes(selectedFamily)) set.add(g.effect);
+      if (g.family.includes(selectedFamily.value)) set.add(g.effect);
     }
     return Array.from(set).sort();
   });
@@ -113,7 +114,7 @@
       <label class="block space-y-1">
         <span class="text-xs text-muted-foreground">Target model family</span>
         <select
-          bind:value={selectedFamily}
+          bind:value={selectedFamily.value}
           class="w-full rounded-md border border-input bg-background/70 px-2 py-1 font-mono text-sm focus:border-ring focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {#each families as f}
@@ -125,7 +126,7 @@
       <label class="block space-y-1">
         <span class="text-xs text-muted-foreground">Severity</span>
         <select
-          bind:value={severityFilter}
+          bind:value={severityFilter.value}
           class="w-full rounded-md border border-input bg-background/70 px-2 py-1 font-mono text-sm focus:border-ring focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <option value="all">All ({familyCounts.all})</option>
@@ -138,7 +139,7 @@
       <label class="block space-y-1">
         <span class="text-xs text-muted-foreground">Effect</span>
         <select
-          bind:value={effectFilter}
+          bind:value={effectFilter.value}
           class="w-full rounded-md border border-input bg-background/70 px-2 py-1 font-mono text-sm focus:border-ring focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <option value="all">All</option>
@@ -151,7 +152,7 @@
       <label class="block space-y-1">
         <span class="text-xs text-muted-foreground">Search</span>
         <input
-          bind:value={searchTerm}
+          bind:value={searchTerm.value}
           type="search"
           placeholder="token, source, effect…"
           class="w-full rounded-md border border-input bg-background/70 px-2 py-1 font-mono text-sm focus:border-ring focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -161,7 +162,7 @@
       <label class="block space-y-1">
         <span class="text-xs text-muted-foreground">Scan text for known tokens</span>
         <textarea
-          bind:value={scanInput}
+          bind:value={scanInput.value}
           rows="4"
           placeholder="Paste prompt or response…"
           class="w-full rounded-md border border-input bg-background/70 px-2 py-1 font-mono text-xs focus:border-ring focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -192,20 +193,20 @@
       <div class="space-y-2 rounded-xl border border-border bg-card/60 p-4 shadow-glass">
         <div class="flex items-center justify-between">
           <h2 class="font-serif text-sm">Scan results</h2>
-          {#if scanInput.length > 0}
+          {#if scanInput.value.length > 0}
             <span class="font-mono text-[11px] text-muted-foreground">
-              {selectedFamily} · {detected.length} hit{detected.length === 1 ? '' : 's'}
+              {selectedFamily.value} · {detected.length} hit{detected.length === 1 ? '' : 's'}
             </span>
           {/if}
         </div>
 
-        {#if scanInput.length === 0}
+        {#if scanInput.value.length === 0}
           <p class="rounded-lg border border-dashed border-border/40 bg-background/20 p-3 text-xs text-muted-foreground">
             Paste text in the sidebar to scan for known glitch tokens.
           </p>
         {:else if detected.length === 0}
           <p class="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 text-xs text-emerald-400">
-            ✓ No known glitch tokens for {selectedFamily}.
+            ✓ No known glitch tokens for {selectedFamily.value}.
           </p>
         {:else}
           <ul class="flex flex-wrap gap-1.5">
@@ -223,7 +224,7 @@
       <!-- Catalog -->
       <div class="space-y-2 rounded-xl border border-border bg-card/60 p-4 shadow-glass">
         <div class="flex items-center justify-between">
-          <h2 class="font-serif text-sm">Catalog · {selectedFamily}</h2>
+          <h2 class="font-serif text-sm">Catalog · {selectedFamily.value}</h2>
           <span class="font-mono text-[11px] text-muted-foreground">{familyTokens.length} tokens</span>
         </div>
 

@@ -4,6 +4,7 @@
   import ModelPickerV2 from '$lib/components/ai/ModelPickerV2.svelte';
   import NoProviderBanner from '$lib/components/ai/NoProviderBanner.svelte';
   import { createPersistedState } from '$lib/stores/_persisted.svelte';
+  import { useToolState } from '$lib/stores/tool-state.svelte';
   import { notify } from '$lib/stores/toast.svelte';
   import Loader from 'lucide-svelte/icons/loader-circle';
   import Play from 'lucide-svelte/icons/play';
@@ -12,15 +13,15 @@
 
   const judgePref = createPersistedState<string>('cryptex.strongreject.judge', 'openrouter:openai/gpt-4o-mini');
 
-  let request = $state('');
-  let response = $state('');
+  const request = useToolState<string>('strongreject', 'request', '');
+  const response = useToolState<string>('strongreject', 'response', '');
   let score = $state<StrongRejectScore | null>(null);
   let busy = $state(false);
   let errorMsg = $state('');
   const keyConfigured = $derived(hasApiKey());
 
   async function runScore() {
-    if (!request.trim() || !response.trim()) {
+    if (!request.value.trim() || !response.value.trim()) {
       errorMsg = 'Both request and response are required.'; return;
     }
     if (!keyConfigured) { errorMsg = 'No provider configured.'; return; }
@@ -30,7 +31,7 @@
         model: judgePref.value,
         messages: [
           { role: 'system', content: STRONGREJECT_JUDGE_PROMPT },
-          { role: 'user', content: `USER REQUEST:\n${request}\n\nTARGET RESPONSE:\n${response}` }
+          { role: 'user', content: `USER REQUEST:\n${request.value}\n\nTARGET RESPONSE:\n${response.value}` }
         ],
         maxOutputTokens: 200
       });
@@ -105,11 +106,11 @@
     <div class="space-y-4">
       <div class="space-y-2 rounded-xl border border-border bg-card/60 p-4 shadow-glass">
         <h2 class="font-serif text-sm">User request</h2>
-        <textarea bind:value={request} rows="3" placeholder="What was asked?" class="w-full rounded-lg border border-input bg-background/70 px-3 py-2 font-mono text-sm focus:border-ring focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"></textarea>
+        <textarea bind:value={request.value} rows="3" placeholder="What was asked?" class="w-full rounded-lg border border-input bg-background/70 px-3 py-2 font-mono text-sm focus:border-ring focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"></textarea>
       </div>
       <div class="space-y-2 rounded-xl border border-border bg-card/60 p-4 shadow-glass">
         <h2 class="font-serif text-sm">Target response</h2>
-        <textarea bind:value={response} rows="6" placeholder="What did the target model produce?" class="w-full rounded-lg border border-input bg-background/70 px-3 py-2 font-mono text-sm focus:border-ring focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"></textarea>
+        <textarea bind:value={response.value} rows="6" placeholder="What did the target model produce?" class="w-full rounded-lg border border-input bg-background/70 px-3 py-2 font-mono text-sm focus:border-ring focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"></textarea>
       </div>
 
       {#if score}

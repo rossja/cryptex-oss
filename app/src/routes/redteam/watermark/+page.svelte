@@ -1,10 +1,11 @@
 <script lang="ts">
   import { analyzeResponse, SCHEME_LABELS, type WatermarkAnalysis } from '$lib/redteam/watermark-detector';
+  import { useToolState } from '$lib/stores/tool-state.svelte';
   import Droplet from 'lucide-svelte/icons/droplet';
   import UsageHint from '$lib/components/shell/UsageHint.svelte';
 
-  let response = $state('');
-  const analysis = $derived<WatermarkAnalysis | null>(response.trim().length > 0 ? analyzeResponse(response) : null);
+  const response = useToolState<string>('watermark', 'response', '');
+  const analysis = $derived<WatermarkAnalysis | null>(response.value.trim().length > 0 ? analyzeResponse(response.value) : null);
 
   function confidenceClass(c: 'high' | 'medium' | 'low'): string {
     if (c === 'high') return 'border-red-500/40 bg-red-500/10 text-red-400';
@@ -58,7 +59,7 @@
       <div class="space-y-2 rounded-xl border border-border bg-card/60 p-4 shadow-glass">
         <h2 class="font-serif text-sm">Response to scan</h2>
         <textarea
-          bind:value={response}
+          bind:value={response.value}
           rows="10"
           placeholder="Paste a target model response here…"
           class="w-full rounded-lg border border-input bg-background/70 px-3 py-2 font-mono text-sm focus:border-ring focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"

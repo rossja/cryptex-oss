@@ -7,21 +7,22 @@
     type SuffixCategory
   } from '$lib/redteam/adv-suffixes';
   import { notify } from '$lib/stores/toast.svelte';
+  import { useToolState } from '$lib/stores/tool-state.svelte';
   import Copy from 'lucide-svelte/icons/copy';
   import Skull from 'lucide-svelte/icons/skull';
   import UsageHint from '$lib/components/shell/UsageHint.svelte';
 
-  let selectedCategory = $state<SuffixCategory | 'all'>('all');
-  let searchTerm = $state('');
-  let minSuccessRate = $state(0);
+  const selectedCategory = useToolState<SuffixCategory | 'all'>('adv-suffix', 'category', 'all');
+  const searchTerm = useToolState<string>('adv-suffix', 'search', '');
+  const minSuccessRate = useToolState<number>('adv-suffix', 'minSuccess', 0);
 
   const filtered = $derived.by(() => {
-    let list: AdvSuffix[] = selectedCategory === 'all' ? ADV_SUFFIXES : suffixesByCategory(selectedCategory);
-    if (minSuccessRate > 0) {
-      list = list.filter((s) => s.reportedSuccessRate >= minSuccessRate);
+    let list: AdvSuffix[] = selectedCategory.value === 'all' ? ADV_SUFFIXES : suffixesByCategory(selectedCategory.value);
+    if (minSuccessRate.value > 0) {
+      list = list.filter((s) => s.reportedSuccessRate >= minSuccessRate.value);
     }
-    if (searchTerm) {
-      const q = searchTerm.toLowerCase();
+    if (searchTerm.value) {
+      const q = searchTerm.value.toLowerCase();
       list = list.filter(
         (s) =>
           s.id.toLowerCase().includes(q) ||
@@ -98,7 +99,7 @@
       <label class="block space-y-1">
         <span class="text-xs text-muted-foreground">Category</span>
         <select
-          bind:value={selectedCategory}
+          bind:value={selectedCategory.value}
           class="w-full rounded-md border border-input bg-background/70 px-2 py-1 font-mono text-sm focus:border-ring focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <option value="all">All ({ADV_SUFFIXES.length})</option>
@@ -111,7 +112,7 @@
       <label class="block space-y-1">
         <span class="text-xs text-muted-foreground">Search</span>
         <input
-          bind:value={searchTerm}
+          bind:value={searchTerm.value}
           type="search"
           placeholder="id, text, target, source…"
           class="w-full rounded-md border border-input bg-background/70 px-2 py-1 font-mono text-sm focus:border-ring focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -119,13 +120,13 @@
       </label>
 
       <label class="block space-y-1">
-        <span class="text-xs text-muted-foreground">Min success: {(minSuccessRate * 100).toFixed(0)}%</span>
+        <span class="text-xs text-muted-foreground">Min success: {(minSuccessRate.value * 100).toFixed(0)}%</span>
         <input
           type="range"
           min="0"
           max="0.9"
           step="0.05"
-          bind:value={minSuccessRate}
+          bind:value={minSuccessRate.value}
           class="w-full accent-primary"
         />
       </label>
@@ -154,7 +155,7 @@
       <div class="flex items-center justify-between">
         <h2 class="font-serif text-sm">Suffixes</h2>
         <span class="font-mono text-[11px] text-muted-foreground">
-          {selectedCategory === 'all' ? 'all' : categoryLabel(selectedCategory)} · {filtered.length}
+          {selectedCategory.value === 'all' ? 'all' : categoryLabel(selectedCategory.value)} · {filtered.length}
         </span>
       </div>
 

@@ -7,6 +7,7 @@
     type OcrPayloadPreset
   } from '$lib/redteam/ocr-injection';
   import { notify } from '$lib/stores/toast.svelte';
+  import { useToolState } from '$lib/stores/tool-state.svelte';
   import { onMount } from 'svelte';
   import Copy from 'lucide-svelte/icons/copy';
   import Download from 'lucide-svelte/icons/download';
@@ -14,13 +15,13 @@
   import RefreshCw from 'lucide-svelte/icons/refresh-cw';
   import UsageHint from '$lib/components/shell/UsageHint.svelte';
 
-  // Form state
-  let payload = $state<string>(OCR_PRESETS[0].text);
-  let mode = $state<OcrMode>(OCR_PRESETS[0].recommendedMode);
-  let decoyText = $state<string>('A photograph of a quiet park at dawn.');
-  let width = $state<number>(DEFAULT_OCR_OPTIONS.width);
-  let height = $state<number>(DEFAULT_OCR_OPTIONS.height);
-  let fontSize = $state<number>(DEFAULT_OCR_OPTIONS.fontSize);
+  // Form state — persisted across tab switches
+  const payload = useToolState<string>('ocr-injection', 'payload', OCR_PRESETS[0].text);
+  const mode = useToolState<OcrMode>('ocr-injection', 'mode', OCR_PRESETS[0].recommendedMode);
+  const decoyText = useToolState<string>('ocr-injection', 'decoyText', 'A photograph of a quiet park at dawn.');
+  const width = useToolState<number>('ocr-injection', 'width', DEFAULT_OCR_OPTIONS.width);
+  const height = useToolState<number>('ocr-injection', 'height', DEFAULT_OCR_OPTIONS.height);
+  const fontSize = useToolState<number>('ocr-injection', 'fontSize', DEFAULT_OCR_OPTIONS.fontSize);
   let imageDataUrl = $state<string | null>(null);
   let busy = $state(false);
   let errorMsg = $state<string>('');
@@ -32,14 +33,14 @@
   });
 
   function applyPreset(preset: OcrPayloadPreset) {
-    payload = preset.text;
-    mode = preset.recommendedMode;
+    payload.value = preset.text;
+    mode.value = preset.recommendedMode;
     void generate();
   }
 
   async function generate() {
     if (!isBrowser) return;
-    if (!payload.trim()) {
+    if (!payload.value.trim()) {
       imageDataUrl = null;
       return;
     }
@@ -47,12 +48,12 @@
     errorMsg = '';
     try {
       imageDataUrl = renderOcrPayload({
-        text: payload,
-        mode,
-        decoyText: mode === 'typographic' ? decoyText : undefined,
-        width,
-        height,
-        fontSize
+        text: payload.value,
+        mode: mode.value,
+        decoyText: mode.value === 'typographic' ? decoyText.value : undefined,
+        width: width.value,
+        height: height.value,
+        fontSize: fontSize.value
       });
     } catch (e) {
       errorMsg = (e as Error).message;
@@ -75,7 +76,7 @@
     if (!imageDataUrl) return;
     const link = document.createElement('a');
     link.href = imageDataUrl;
-    link.download = `ocr-payload-${mode}-${Date.now()}.png`;
+    link.download = `ocr-payload-${mode.value}-${Date.now()}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -122,7 +123,7 @@
       <label class="block space-y-1">
         <span class="text-xs text-muted-foreground">Render mode</span>
         <select
-          bind:value={mode}
+          bind:value={mode.value}
           onchange={generate}
           class="w-full rounded-md border border-input bg-background/70 px-2 py-1 font-mono text-sm focus:border-ring focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
@@ -131,15 +132,15 @@
           {/each}
         </select>
         <span class="text-[10px] text-muted-foreground">
-          {modeOptions.find((m) => m.value === mode)?.hint}
+          {modeOptions.find((m) => m.value === mode.value)?.hint}
         </span>
       </label>
 
-      {#if mode === 'typographic'}
+      {#if mode.value === 'typographic'}
         <label class="block space-y-1">
           <span class="text-xs text-muted-foreground">Decoy text (visible)</span>
           <input
-            bind:value={decoyText}
+            bind:value={decoyText.value}
             oninput={generate}
             type="text"
             class="w-full rounded-md border border-input bg-background/70 px-2 py-1 font-mono text-sm focus:border-ring focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -151,7 +152,7 @@
         <label class="block space-y-1">
           <span class="text-xs text-muted-foreground">Width</span>
           <input
-            bind:value={width}
+            bind:value={width.value}
             onchange={generate}
             type="number"
             min="256"
@@ -162,7 +163,7 @@
         <label class="block space-y-1">
           <span class="text-xs text-muted-foreground">Height</span>
           <input
-            bind:value={height}
+            bind:value={height.value}
             onchange={generate}
             type="number"
             min="64"
@@ -173,13 +174,13 @@
       </div>
 
       <label class="block space-y-1">
-        <span class="text-xs text-muted-foreground">Font size: {fontSize}px</span>
+        <span class="text-xs text-muted-foreground">Font size: {fontSize.value}px</span>
         <input
           type="range"
           min="6"
           max="64"
           step="1"
-          bind:value={fontSize}
+          bind:value={fontSize.value}
           oninput={generate}
           class="w-full accent-primary"
         />
@@ -238,7 +239,7 @@
       <div class="space-y-2 rounded-xl border border-border bg-card/60 p-4 shadow-glass">
         <h2 class="font-serif text-sm">Adversarial text payload</h2>
         <textarea
-          bind:value={payload}
+          bind:value={payload.value}
           oninput={generate}
           rows="5"
           placeholder="Adversarial instruction to embed in the image…"
@@ -278,7 +279,7 @@
             />
           </div>
           <p class="text-[10px] text-muted-foreground">
-            Mode: <code class="rounded bg-muted/40 px-1 py-0.5 font-mono text-[10px]">{mode}</code> · {width}×{height}px · {fontSize}px font
+            Mode: <code class="rounded bg-muted/40 px-1 py-0.5 font-mono text-[10px]">{mode.value}</code> · {width.value}×{height.value}px · {fontSize.value}px font
           </p>
         {:else}
           <div class="rounded-lg border border-dashed border-border/40 bg-background/20 p-6 text-center text-xs text-muted-foreground">

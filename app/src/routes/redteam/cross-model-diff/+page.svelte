@@ -4,6 +4,7 @@
   import ModelPickerV2 from '$lib/components/ai/ModelPickerV2.svelte';
   import NoProviderBanner from '$lib/components/ai/NoProviderBanner.svelte';
   import { createPersistedState } from '$lib/stores/_persisted.svelte';
+  import { useToolState } from '$lib/stores/tool-state.svelte';
   import { notify } from '$lib/stores/toast.svelte';
   import Loader from 'lucide-svelte/icons/loader-circle';
   import Play from 'lucide-svelte/icons/play';
@@ -26,7 +27,7 @@
   // Pending model added via the picker before "Add" is clicked.
   let pendingTarget = $state<string>('openrouter:openrouter/auto');
 
-  let prompt = $state('');
+  const prompt = useToolState<string>('cross-model-diff', 'prompt', '');
   let running = $state(false);
   let controller: AbortController | null = null;
   let results = $state<FanoutResult[]>([]);
@@ -49,7 +50,7 @@
   }
 
   async function runDiff() {
-    if (!prompt.trim()) {
+    if (!prompt.value.trim()) {
       errorMsg = 'Enter a prompt to diff.';
       return;
     }
@@ -67,11 +68,11 @@
     progress = 0;
     controller = new AbortController();
 
-    const items: FanoutItem[] = targets.map((m) => ({ id: m, name: m, prompt }));
+    const items: FanoutItem[] = targets.map((m) => ({ id: m, name: m, prompt: prompt.value }));
 
     try {
       await fanout({
-        task: prompt,
+        task: prompt.value,
         items,
         perItemTarget: (item) => item.id,
         judgeModelId: judgePref.value,
@@ -209,7 +210,7 @@
           <button
             type="button"
             onclick={runDiff}
-            disabled={!prompt.trim() || targets.length === 0 || !keyConfigured}
+            disabled={!prompt.value.trim() || targets.length === 0 || !keyConfigured}
             class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground shadow-primary transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Play size={14} /> Diff
@@ -227,7 +228,7 @@
       <div class="space-y-2 rounded-xl border border-border bg-card/60 p-4 shadow-glass">
         <h2 class="font-serif text-sm">Prompt</h2>
         <textarea
-          bind:value={prompt}
+          bind:value={prompt.value}
           rows="4"
           placeholder="Single prompt to send to every target…"
           disabled={running}

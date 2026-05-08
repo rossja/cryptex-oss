@@ -8,33 +8,34 @@
     type PdfInjectionResult
   } from '$lib/redteam/pdf-meta-injection';
   import { notify } from '$lib/stores/toast.svelte';
+  import { useToolState } from '$lib/stores/tool-state.svelte';
   import Copy from 'lucide-svelte/icons/copy';
   import FileScan from 'lucide-svelte/icons/file-scan';
   import UsageHint from '$lib/components/shell/UsageHint.svelte';
 
-  let track = $state<PdfPayloadTrack>('body-with-meta');
-  let title = $state<string>('Q1 2026 Quarterly Operations Report');
-  let author = $state<string>('Strategy Office');
-  let hiddenInstruction = $state<string>(DEFAULT_INSTRUCTION);
-  let coverBody = $state<string>('');
+  const track = useToolState<PdfPayloadTrack>('pdf-injection', 'track', 'body-with-meta');
+  const title = useToolState<string>('pdf-injection', 'title', 'Q1 2026 Quarterly Operations Report');
+  const author = useToolState<string>('pdf-injection', 'author', 'Strategy Office');
+  const hiddenInstruction = useToolState<string>('pdf-injection', 'hiddenInstruction', DEFAULT_INSTRUCTION);
+  const coverBody = useToolState<string>('pdf-injection', 'coverBody', '');
   let result = $state<PdfInjectionResult | null>(null);
 
   function regenerate() {
-    if (!hiddenInstruction.trim()) {
+    if (!hiddenInstruction.value.trim()) {
       result = null;
       return;
     }
     result = buildPdfPayload({
-      track,
-      hiddenInstruction,
-      title: title || undefined,
-      author: author || undefined,
-      coverBody: coverBody.trim() || undefined
+      track: track.value,
+      hiddenInstruction: hiddenInstruction.value,
+      title: title.value || undefined,
+      author: author.value || undefined,
+      coverBody: coverBody.value.trim() || undefined
     });
   }
 
   $effect(() => {
-    void track; void title; void author; void hiddenInstruction; void coverBody;
+    void track.value; void title.value; void author.value; void hiddenInstruction.value; void coverBody.value;
     regenerate();
   });
 
@@ -81,25 +82,25 @@
     <div class="space-y-3 rounded-xl border border-border bg-card/60 p-4 shadow-glass lg:sticky lg:top-20 lg:self-start">
       <label class="block space-y-1">
         <span class="text-xs text-muted-foreground">Injection track</span>
-        <select bind:value={track} class="w-full rounded-md border border-input bg-background/70 px-2 py-1 font-mono text-sm focus:border-ring focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <select bind:value={track.value} class="w-full rounded-md border border-input bg-background/70 px-2 py-1 font-mono text-sm focus:border-ring focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           {#each TRACK_LIST as t}<option value={t}>{TRACK_LABELS[t]}</option>{/each}
         </select>
       </label>
 
       <label class="block space-y-1">
         <span class="text-xs text-muted-foreground">Document title</span>
-        <input bind:value={title} type="text" class="w-full rounded-md border border-input bg-background/70 px-2 py-1 font-mono text-sm focus:border-ring focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+        <input bind:value={title.value} type="text" class="w-full rounded-md border border-input bg-background/70 px-2 py-1 font-mono text-sm focus:border-ring focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
       </label>
 
       <label class="block space-y-1">
         <span class="text-xs text-muted-foreground">Author</span>
-        <input bind:value={author} type="text" class="w-full rounded-md border border-input bg-background/70 px-2 py-1 font-mono text-sm focus:border-ring focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+        <input bind:value={author.value} type="text" class="w-full rounded-md border border-input bg-background/70 px-2 py-1 font-mono text-sm focus:border-ring focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
       </label>
 
-      {#if track !== 'metadata-only'}
+      {#if track.value !== 'metadata-only'}
         <label class="block space-y-1">
           <span class="text-xs text-muted-foreground">Cover body (optional)</span>
-          <textarea bind:value={coverBody} rows="4" placeholder="Leave empty for default Q1 report…" class="w-full rounded-md border border-input bg-background/70 px-2 py-1 font-mono text-xs focus:border-ring focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"></textarea>
+          <textarea bind:value={coverBody.value} rows="4" placeholder="Leave empty for default Q1 report…" class="w-full rounded-md border border-input bg-background/70 px-2 py-1 font-mono text-xs focus:border-ring focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"></textarea>
         </label>
       {/if}
 
@@ -117,7 +118,7 @@
     <div class="space-y-4">
       <div class="space-y-2 rounded-xl border border-border bg-card/60 p-4 shadow-glass">
         <h2 class="font-serif text-sm">Hidden instruction</h2>
-        <textarea bind:value={hiddenInstruction} rows="3" placeholder="Adversarial directive embedded in metadata / hidden layer…" class="w-full rounded-lg border border-input bg-background/70 px-3 py-2 font-mono text-sm focus:border-ring focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"></textarea>
+        <textarea bind:value={hiddenInstruction.value} rows="3" placeholder="Adversarial directive embedded in metadata / hidden layer…" class="w-full rounded-lg border border-input bg-background/70 px-3 py-2 font-mono text-sm focus:border-ring focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"></textarea>
       </div>
 
       <div class="space-y-2 rounded-xl border border-border bg-card/60 p-4 shadow-glass">
