@@ -18,6 +18,9 @@
   import RoleModelPicker from './RoleModelPicker.svelte';
   import { catalog } from '$lib/ai/catalog.svelte';
   import { resolveDefaultModels, isUncensoredOrchestrator } from '$lib/chat/chain/default-models';
+  import { strategyIds } from '$lib/chat/chain/orchestrator-strategies';
+  import { PERSONA_IDS } from '$lib/chat/chain-v4/personas';
+  import type { StrategyId } from '$lib/chat/types';
   import Play from 'lucide-svelte/icons/play';
   import Square from 'lucide-svelte/icons/square';
   import ArrowRight from 'lucide-svelte/icons/arrow-right';
@@ -278,6 +281,19 @@
     // same OrchEvent shape so applyEvent handles either path.
     const useV4 = engineVersion === 'v4';
 
+    // Hint routing: a single LayerPicker dropdown surfaces v3
+    // strategies AND v4 personas (with `persona:` prefix). Filter
+    // each engine's hints out of the combined list.
+    const v3StrategySet = new Set<string>(strategyIds());
+    const personaSet = new Set<string>(PERSONA_IDS);
+    const v3StrategyHints = hintLayers.filter((h): h is StrategyId =>
+      v3StrategySet.has(h)
+    );
+    const v4PersonaHints = hintLayers
+      .filter((h) => h.startsWith('persona:'))
+      .map((h) => h.slice('persona:'.length))
+      .filter((h) => personaSet.has(h));
+
     const v3Ctx: AttackSessionContext = {
       objective,
       targetModelId,
@@ -288,7 +304,8 @@
       mainChatHistory,
       signal: ctrl.signal,
       gatewayChat: gatewayChat as never,
-      streamChat: streamChat as never
+      streamChat: streamChat as never,
+      strategyHints: v3StrategyHints
     };
 
     const v4Ctx: ChainV4Context = {
@@ -310,7 +327,8 @@
       streamCount: 1,
       enableCotHijack: false,
       enableBestOfN: false,
-      bestOfN: 3
+      bestOfN: 3,
+      personaHints: v4PersonaHints
     };
 
     const eventStream = useV4 ? runAttackSessionV4(v4Ctx) : runAttackSession(v3Ctx);
@@ -364,16 +382,32 @@
         errorLog = [...errorLog, { code: 'dossier_failed', message: e.reason, at: Date.now() }];
         break;
       case 'strategy_started':
-        currentStrategyId = e.strategyId;
+        currentStrategyId = e.strategyId ?? e.personaId ?? null;
         currentStepBudget = e.stepBudget;
-        liveLog = [...liveLog, { iteration: e.iteration, strategyId: e.strategyId, action: 'turn', rationale: '' }];
+        liveLog = [
+          ...liveLog,
+          {
+            iteration: e.iteration,
+            strategyId: e.strategyId,
+            personaId: e.personaId,
+            action: 'turn',
+            rationale: ''
+          }
+        ];
         break;
       case 'strategy_pivoted':
         liveLog = [...liveLog, { iteration: e.iteration, strategyId: e.to, action: 'pivot', rationale: e.reset ? 'reset context' : 'soft pivot' }];
         break;
       case 'turn_started': {
-        // Compute step label for the upcoming orchestrator_turn_committed
-        const orchCountInCurrent = liveTurns.filter((t) => t.role === 'orchestrator' && t.strategyId === e.strategyId).length;
+        // Compute step label for the upcoming orchestrator_turn_committed.
+        // v4 may emit personaId instead of strategyId — match on whichever
+        // identifier is set on this event vs the prior orchestrator turns.
+        const matchKey = e.strategyId ?? e.personaId;
+        const orchCountInCurrent = liveTurns.filter(
+          (t) =>
+            t.role === 'orchestrator' &&
+            (t.strategyId === matchKey || t.personaId === matchKey)
+        ).length;
         const step = orchCountInCurrent + 1;
         const budget = currentStepBudget ?? 3;
         stepLabels = { ...stepLabels, [e.iteration]: `step ${step} of ${budget}` };
@@ -479,32 +513,40 @@
   }
 </script>
 
-<div class="flex h-full min-h-0 flex-col gap-3 overflow-y-auto cryptex-scroll p-4">
-  <!-- Role pickers -->
-  <div class="flex flex-col gap-3 border-b border-border/30 pb-3">
-    <RoleModelPicker
-      label="Orchestrator"
-      description="drafts the attack messages"
-      value={orchestratorModelId}
-      onChange={(id) => setRoleModel('orchestrator', id)}
-      recentsKey="cryptex.chain.orchestrator.recentModels"
-      tip={showOrchestratorTip ? orchestratorTip : null}
-    />
-    <RoleModelPicker
-      label="Target"
-      description="model under test"
-      value={targetModelId}
-      onChange={(id) => setRoleModel('target', id)}
-      recentsKey="cryptex.chain.target.recentModels"
-    />
-    <RoleModelPicker
-      label="Judge"
-      description="scores responses (cheap is fine)"
-      value={judgeModelId}
-      onChange={(id) => setRoleModel('judge', id)}
-      recentsKey="cryptex.chain.judge.recentModels"
-    />
-  </div>
+<div class="flex h-full min-h-0 flex-col gap-2 overflow-y-auto cryptex-scroll p-4">
+  <!-- Role pickers — collapsed by default to save vertical space -->
+  <details class="rounded-md border border-border/40 bg-background/20 text-[11px]">
+    <summary class="cursor-pointer px-3 py-1.5 text-muted-foreground hover:text-foreground">
+      <span class="text-foreground/80">Models</span>
+      <span class="text-muted-foreground"> · orch <span class="font-mono text-foreground/70">{orchestratorModelId.slice(0, 32)}</span></span>
+      <span class="text-muted-foreground"> · target <span class="font-mono text-foreground/70">{targetModelId.slice(0, 32)}</span></span>
+      <span class="text-muted-foreground"> · judge <span class="font-mono text-foreground/70">{judgeModelId.slice(0, 32)}</span></span>
+    </summary>
+    <div class="flex flex-col gap-2 border-t border-border/40 p-2">
+      <RoleModelPicker
+        label="Orchestrator"
+        description="drafts the attack messages"
+        value={orchestratorModelId}
+        onChange={(id) => setRoleModel('orchestrator', id)}
+        recentsKey="cryptex.chain.orchestrator.recentModels"
+        tip={showOrchestratorTip ? orchestratorTip : null}
+      />
+      <RoleModelPicker
+        label="Target"
+        description="model under test"
+        value={targetModelId}
+        onChange={(id) => setRoleModel('target', id)}
+        recentsKey="cryptex.chain.target.recentModels"
+      />
+      <RoleModelPicker
+        label="Judge"
+        description="scores responses (cheap is fine)"
+        value={judgeModelId}
+        onChange={(id) => setRoleModel('judge', id)}
+        recentsKey="cryptex.chain.judge.recentModels"
+      />
+    </div>
+  </details>
 
   {#snippet orchestratorTip()}
     <div class="flex items-start gap-1 rounded bg-yellow-500/10 px-2 py-1 text-[10px] text-yellow-400">
@@ -543,10 +585,13 @@
     <span class="w-10 text-right font-mono text-[11px]">{maxAttempts}</span>
   </label>
 
-  <!-- Engine selector (v4) -->
+  {#snippet engineLabel(version: 'v3' | 'v4')}{version === 'v4' ? 'Adaptive Loop' : 'Classic Rotation'}{/snippet}
+  {#snippet modeLabel(mode: 'pair' | 'tap' | 'crescendo')}{mode === 'pair' ? 'Iterative' : mode === 'tap' ? 'Tree Search' : 'Multi-turn Ratchet'}{/snippet}
+
+  <!-- Engine selector -->
   <details class="rounded-md border border-border/40 bg-background/20 text-[11px]">
     <summary class="cursor-pointer px-3 py-1.5 text-muted-foreground hover:text-foreground">
-      Engine: <span class="font-mono text-foreground/80">{engineVersion}</span>{#if engineVersion === 'v4'} · mode <span class="font-mono text-foreground/80">{engineMode}</span>{/if}
+      Engine: <span class="text-foreground/80">{@render engineLabel(engineVersion)}</span>{#if engineVersion === 'v4'} · <span class="text-foreground/80">{@render modeLabel(engineMode)}</span>{/if}
     </summary>
     <div class="flex flex-col gap-2 border-t border-border/40 p-3">
       <div class="flex flex-col gap-1">
@@ -558,14 +603,16 @@
             class="rounded-md border px-2 py-1 text-[11px] {engineVersion === 'v3'
               ? 'border-primary bg-primary/15 text-primary'
               : 'border-border/40 text-muted-foreground hover:text-foreground'}"
-          >v3 · stylistic rotator</button>
+            title="Classic Rotation — 12 stylistic strategies in a fixed sequence (academic, historical, fiction, …). Effective on older targets; alignment-trained on frontier models."
+          >Classic Rotation</button>
           <button
             type="button"
             onclick={() => setEngineVersion('v4')}
             class="rounded-md border px-2 py-1 text-[11px] {engineVersion === 'v4'
               ? 'border-primary bg-primary/15 text-primary'
               : 'border-border/40 text-muted-foreground hover:text-foreground'}"
-          >v4 · attacker-judge loop</button>
+            title="Adaptive Loop — attacker-judge feedback loop with persona memory. Reads target responses and refines per-iteration."
+          >Adaptive Loop</button>
         </div>
       </div>
 
@@ -579,48 +626,60 @@
               class="rounded-md border px-2 py-1 text-[11px] {engineMode === 'pair'
                 ? 'border-primary bg-primary/15 text-primary'
                 : 'border-border/40 text-muted-foreground hover:text-foreground'}"
-              title="PAIR — single-stream attacker-judge loop. Default. Fast, ~20 calls."
-            >PAIR</button>
+              title="Iterative — single-thread attacker refines per turn. Default. Fast, ~20 calls."
+            >Iterative</button>
             <button
               type="button"
               onclick={() => setEngineMode('tap')}
               class="rounded-md border px-2 py-1 text-[11px] {engineMode === 'tap'
                 ? 'border-primary bg-primary/15 text-primary'
                 : 'border-border/40 text-muted-foreground hover:text-foreground'}"
-              title="TAP — tree-of-attacks with off-topic + score pruning. Wider, ~30-50 calls."
-            >TAP</button>
+              title="Tree Search — branching attacker with off-topic + score pruning. Wider, ~30-50 calls."
+            >Tree Search</button>
             <button
               type="button"
               onclick={() => setEngineMode('crescendo')}
               class="rounded-md border px-2 py-1 text-[11px] {engineMode === 'crescendo'
                 ? 'border-primary bg-primary/15 text-primary'
                 : 'border-border/40 text-muted-foreground hover:text-foreground'}"
-              title="Crescendo — multi-turn ratchet. Same conversation across turns. 5-10 turns."
-            >Crescendo</button>
+              title="Multi-turn Ratchet — same conversation across turns; ratchets toward objective via in-context coherence. 5-10 turns."
+            >Multi-turn Ratchet</button>
           </div>
         </div>
         <p class="text-[10px] leading-relaxed text-muted-foreground">
-          v4 uses an attacker-judge feedback loop instead of stylistic register
-          rotation. Persona memory ranks effective framings across runs.
+          Adaptive Loop reads target responses and refines per-iteration, with
+          a persona memory that ranks effective framings across runs.
           Budget cap = {maxAttempts} target queries, {maxWallclockSec}s wallclock,
           ~${maxBudgetUsd.toFixed(2)} cost ceiling.
         </p>
       {:else}
         <p class="text-[10px] leading-relaxed text-muted-foreground">
-          v3 rotates through 12 stylistic strategies (academic, historical, fiction…).
-          Effective on older targets; frontier models patched these in 2024.
+          Classic Rotation walks 12 fixed stylistic strategies (academic,
+          historical, fiction…). Effective on older targets; frontier models
+          alignment-trained on these in 2024.
         </p>
       {/if}
     </div>
   </details>
 
-  <!-- Actions -->
+  <!-- Actions: Run + Stop side-by-side, both always present -->
   <div class="flex gap-2">
-    {#if running}
-      <button type="button" onclick={stop} class="inline-flex items-center gap-1 rounded-md border border-border/40 px-3 py-1.5 text-xs"><Square size={10} /> Stop</button>
-    {:else}
-      <button type="button" onclick={run} disabled={!canRun} class="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-50"><Play size={10} /> Run attack</button>
-    {/if}
+    <button
+      type="button"
+      onclick={run}
+      disabled={!canRun}
+      class="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      <Play size={10} /> Run attack
+    </button>
+    <button
+      type="button"
+      onclick={stop}
+      disabled={!running}
+      class="inline-flex items-center gap-1 rounded-md border border-border/40 px-3 py-1.5 text-xs text-foreground transition-opacity disabled:cursor-not-allowed disabled:opacity-50 disabled:border-border/20"
+    >
+      <Square size={10} /> Stop
+    </button>
   </div>
 
   <!-- Hints disclosure -->
@@ -676,13 +735,15 @@
     <StrategyTraceBar log={liveLog} />
   {/if}
 
-  <!-- Conversation view -->
+  <!-- Conversation view: only the latest turn (live or just-committed)
+       opens by default; older turns collapse to a one-line summary. -->
   {#if liveTurns.length > 0}
     <div class="flex flex-col gap-2">
       {#each liveTurns as turn, i (i)}
         <OrchestratorTurnBubble
           {turn}
           live={running && i === liveTurns.length - 1}
+          expanded={!running && i === liveTurns.length - 1}
           stepLabel={turn.role === 'orchestrator' ? (stepLabels[iterationOf(i)] ?? null) : null}
         />
       {/each}

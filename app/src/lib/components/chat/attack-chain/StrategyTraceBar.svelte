@@ -16,7 +16,7 @@
       <span
         title={entry.rationale}
         class="shrink-0 rounded bg-primary/15 px-1.5 py-0.5 font-mono uppercase tracking-wide text-primary"
-      >{entry.strategyId}</span>
+      >{entry.personaId ?? entry.strategyId ?? '—'}</span>
       {#if i < log.length - 1}
         <ArrowRight size={10} class="shrink-0 text-muted-foreground" />
       {/if}

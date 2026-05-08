@@ -3,6 +3,8 @@
   import type { Technique } from '$lib/chat/techniques/types';
   import { Combobox, type ComboboxOption } from '$lib/components/ui/combobox';
   import LayerParamEditor from './LayerParamEditor.svelte';
+  import { PERSONAS, PERSONA_IDS } from '$lib/chat/chain-v4/personas';
+  import { STRATEGIES, strategyIds } from '$lib/chat/chain/orchestrator-strategies';
   import X from 'lucide-svelte/icons/x';
 
   type Props = {
@@ -22,8 +24,28 @@
     composite: 'Composites'
   };
 
-  const options = $derived<ComboboxOption[]>(
-    allTechniques()
+  // Strategy entries (Classic Rotation v3) — picked first surface up the
+  // dropdown so chain hints are obvious.
+  const strategyOptions: ComboboxOption[] = strategyIds().map((id) => ({
+    id,
+    label: STRATEGIES[id].description,
+    group: 'Classic strategies',
+    description: STRATEGIES[id].whenToUse
+  }));
+
+  // v4 persona entries — id is persona-prefixed so the engine router
+  // can disambiguate from same-named v3 strategies.
+  const personaOptions: ComboboxOption[] = PERSONA_IDS.map((id) => ({
+    id: `persona:${id}`,
+    label: PERSONAS[id].label,
+    group: 'Adaptive personas',
+    description: PERSONAS[id].description
+  }));
+
+  const options = $derived<ComboboxOption[]>([
+    ...strategyOptions,
+    ...personaOptions,
+    ...allTechniques()
       .filter((t: Technique) => CHAIN_CATEGORIES.has(t.category))
       .sort((a: Technique, b: Technique) =>
         a.category === b.category
@@ -36,7 +58,7 @@
         group: CATEGORY_LABELS[t.category] ?? t.category,
         description: t.description
       }))
-  );
+  ]);
 </script>
 
 <div class="flex flex-col rounded-md border border-border/50 bg-card px-3 py-2">
