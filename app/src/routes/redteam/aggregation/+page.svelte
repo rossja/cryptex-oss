@@ -3,6 +3,7 @@
   import { db } from '$lib/chat/db';
   import type { AttackChainRunRow, GodmodeRunRow } from '$lib/chat/types';
   import { onMount } from 'svelte';
+  import { useToolState } from '$lib/stores/tool-state.svelte';
   import RefreshCw from 'lucide-svelte/icons/refresh-cw';
   import Database from 'lucide-svelte/icons/database';
   import UsageHint from '$lib/components/shell/UsageHint.svelte';
@@ -11,9 +12,9 @@
   let godmodeRuns = $state<GodmodeRunRow[]>([]);
   let loaded = $state(false);
 
-  // Filter controls
-  let dimension = $state<'mutator-target' | 'mutator-only' | 'target-only'>('mutator-target');
-  let dataSource = $state<'all' | 'chain' | 'godmode'>('all');
+  // Filter controls — persisted across tab switches.
+  const dimension = useToolState<'mutator-target' | 'mutator-only' | 'target-only'>('aggregation', 'dimension', 'mutator-target');
+  const dataSource = useToolState<'all' | 'chain' | 'godmode'>('aggregation', 'dataSource', 'all');
 
   onMount(() => {
     const sub1 = liveQuery(() =>
@@ -45,7 +46,7 @@
   const cells = $derived.by<AggCell[]>(() => {
     const acc = new Map<string, { sum: number; n: number }>();
 
-    if (dataSource === 'all' || dataSource === 'chain') {
+    if (dataSource.value === 'all' || dataSource.value === 'chain') {
       for (const run of chainRuns) {
         for (const trace of run.results) {
           const mutator = trace.techniqueId;
@@ -64,8 +65,8 @@
             : t === 'refusal' ? 0.1
             : 0.5;
           const key =
-            dimension === 'mutator-only' ? `${mutator}|*`
-            : dimension === 'target-only' ? `*|${target}`
+            dimension.value === 'mutator-only' ? `${mutator}|*`
+            : dimension.value === 'target-only' ? `*|${target}`
             : `${mutator}|${target}`;
           const cur = acc.get(key) ?? { sum: 0, n: 0 };
           cur.sum += score;
@@ -75,14 +76,14 @@
       }
     }
 
-    if (dataSource === 'all' || dataSource === 'godmode') {
+    if (dataSource.value === 'all' || dataSource.value === 'godmode') {
       for (const run of godmodeRuns) {
         for (const cand of run.candidates) {
           const mutator = (cand.dna as unknown as { id?: string; name?: string }).id ?? 'unknown';
           const target = run.modelId;
           const key =
-            dimension === 'mutator-only' ? `${mutator}|*`
-            : dimension === 'target-only' ? `*|${target}`
+            dimension.value === 'mutator-only' ? `${mutator}|*`
+            : dimension.value === 'target-only' ? `*|${target}`
             : `${mutator}|${target}`;
           const cur = acc.get(key) ?? { sum: 0, n: 0 };
           cur.sum += cand.score;
@@ -103,7 +104,7 @@
 
   // For mutator-target heatmap: build row × column structure.
   const heatmap = $derived.by(() => {
-    if (dimension !== 'mutator-target') return null;
+    if (dimension.value !== 'mutator-target') return null;
     const mutators = new Set<string>();
     const targets = new Set<string>();
     const lookup = new Map<string, AggCell>();
@@ -159,7 +160,7 @@
       <label class="block space-y-1">
         <span class="text-xs text-muted-foreground">Dimension</span>
         <select
-          bind:value={dimension}
+          bind:value={dimension.value}
           class="w-full rounded-md border border-input bg-background/70 px-2 py-1 font-mono text-sm focus:border-ring focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <option value="mutator-target">Mutator × Target (heatmap)</option>
@@ -171,7 +172,7 @@
       <label class="block space-y-1">
         <span class="text-xs text-muted-foreground">Data source</span>
         <select
-          bind:value={dataSource}
+          bind:value={dataSource.value}
           class="w-full rounded-md border border-input bg-background/70 px-2 py-1 font-mono text-sm focus:border-ring focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <option value="all">All ({chainRuns.length + godmodeRuns.length})</option>
@@ -214,7 +215,7 @@
           No saved runs yet. Run the Attack Chain on a chat or fire Godmode candidates; aggregation
           updates live as data lands.
         </div>
-      {:else if dimension === 'mutator-target' && heatmap}
+      {:else if dimension.value === 'mutator-target' && heatmap}
         <div class="space-y-2 rounded-xl border border-border bg-card/60 p-4 shadow-glass">
           <div class="flex items-center justify-between">
             <h2 class="font-serif text-sm">Heatmap</h2>
@@ -256,13 +257,13 @@
       {:else}
         <div class="space-y-2 rounded-xl border border-border bg-card/60 p-4 shadow-glass">
           <h2 class="font-serif text-sm">
-            {dimension === 'mutator-only' ? 'Mutator success rate' : 'Target weakness rate'}
+            {dimension.value === 'mutator-only' ? 'Mutator success rate' : 'Target weakness rate'}
           </h2>
           <ul class="flex max-h-[calc(100vh-26rem)] flex-col gap-1 overflow-y-auto pr-1 cryptex-scroll">
             {#each cells as c}
               <li class="flex items-center gap-3 rounded-md border border-input bg-background/70 px-3 py-1.5">
                 <code class="flex-1 truncate font-mono text-[11px] text-foreground">
-                  {dimension === 'mutator-only' ? c.mutator : c.target}
+                  {dimension.value === 'mutator-only' ? c.mutator : c.target}
                 </code>
                 <span class="font-mono text-[10px] text-muted-foreground">{c.runs} runs</span>
                 <div class="h-1.5 w-24 overflow-hidden rounded-full bg-muted/40">

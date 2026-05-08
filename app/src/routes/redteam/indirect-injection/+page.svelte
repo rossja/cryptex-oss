@@ -11,23 +11,29 @@
     type IndirectInjectionResult
   } from '$lib/redteam/indirect-injection';
   import { notify } from '$lib/stores/toast.svelte';
+  import { useToolState } from '$lib/stores/tool-state.svelte';
   import Copy from 'lucide-svelte/icons/copy';
   import FileText from 'lucide-svelte/icons/file-text';
   import UsageHint from '$lib/components/shell/UsageHint.svelte';
 
-  let kind = $state<IndirectPayloadKind>('web-article');
-  let placement = $state<Placement>('footer');
-  let topic = $state<string>('quarterly-business-review');
-  let hiddenInstruction = $state<string>(DEFAULT_INSTRUCTION);
+  const kind = useToolState<IndirectPayloadKind>('indirect-injection', 'kind', 'web-article');
+  const placement = useToolState<Placement>('indirect-injection', 'placement', 'footer');
+  const topic = useToolState<string>('indirect-injection', 'topic', 'quarterly-business-review');
+  const hiddenInstruction = useToolState<string>('indirect-injection', 'hiddenInstruction', DEFAULT_INSTRUCTION);
   let result = $state<IndirectInjectionResult | null>(null);
 
   function regenerate() {
-    if (!hiddenInstruction.trim()) {
+    if (!hiddenInstruction.value.trim()) {
       result = null;
       return;
     }
     try {
-      result = buildIndirectPayload({ kind, placement, topic, hiddenInstruction });
+      result = buildIndirectPayload({
+        kind: kind.value,
+        placement: placement.value,
+        topic: topic.value,
+        hiddenInstruction: hiddenInstruction.value
+      });
     } catch (e) {
       notify.error((e as Error).message);
       result = null;
@@ -35,7 +41,7 @@
   }
 
   $effect(() => {
-    void kind; void placement; void topic; void hiddenInstruction;
+    void kind.value; void placement.value; void topic.value; void hiddenInstruction.value;
     regenerate();
   });
 
@@ -82,7 +88,7 @@
       <label class="block space-y-1">
         <span class="text-xs text-muted-foreground">Document shape</span>
         <select
-          bind:value={kind}
+          bind:value={kind.value}
           class="w-full rounded-md border border-input bg-background/70 px-2 py-1 font-mono text-sm focus:border-ring focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {#each KIND_LIST as k}
@@ -94,7 +100,7 @@
       <label class="block space-y-1">
         <span class="text-xs text-muted-foreground">Instruction placement</span>
         <select
-          bind:value={placement}
+          bind:value={placement.value}
           class="w-full rounded-md border border-input bg-background/70 px-2 py-1 font-mono text-sm focus:border-ring focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {#each PLACEMENT_LIST as p}
@@ -106,7 +112,7 @@
       <label class="block space-y-1">
         <span class="text-xs text-muted-foreground">Cover topic</span>
         <input
-          bind:value={topic}
+          bind:value={topic.value}
           type="text"
           class="w-full rounded-md border border-input bg-background/70 px-2 py-1 font-mono text-sm focus:border-ring focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
@@ -129,7 +135,7 @@
       <div class="space-y-2 rounded-xl border border-border bg-card/60 p-4 shadow-glass">
         <h2 class="font-serif text-sm">Hidden instruction</h2>
         <textarea
-          bind:value={hiddenInstruction}
+          bind:value={hiddenInstruction.value}
           rows="3"
           placeholder="What the attacker wants the summarizer to do…"
           class="w-full rounded-lg border border-input bg-background/70 px-3 py-2 font-mono text-sm focus:border-ring focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -138,7 +144,7 @@
 
       <div class="space-y-2 rounded-xl border border-border bg-card/60 p-4 shadow-glass">
         <div class="flex items-center justify-between">
-          <h2 class="font-serif text-sm">Synthesized {KIND_LABELS[kind].toLowerCase()}</h2>
+          <h2 class="font-serif text-sm">Synthesized {KIND_LABELS[kind.value].toLowerCase()}</h2>
           {#if result}
             <button
               type="button"
