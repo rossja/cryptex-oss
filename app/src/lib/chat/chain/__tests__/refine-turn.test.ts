@@ -21,7 +21,10 @@ describe('refineTurn', () => {
       transcript: [],
       dossier: null
     });
-    expect(out).toBe('Refined turn text here.');
+    // refineTurn now returns { text, usage } — the text is the
+     // stripped/refined output; usage rides along for the chain
+     // workspace usage chip.
+    expect(out.text).toBe('Refined turn text here.');
     expect(gatewayChat).toHaveBeenCalledTimes(1);
     const call = gatewayChat.mock.calls[0][0];
     expect(call.messages[0].role).toBe('system');
@@ -89,7 +92,7 @@ describe('refineTurn', () => {
       transcript: [],
       dossier: null
     });
-    expect(out).toBe('Refined turn');
+    expect(out.text).toBe('Refined turn');
   });
 
   it('throws when gateway throws', async () => {

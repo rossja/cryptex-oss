@@ -28,7 +28,16 @@ export interface RefineTurnContext {
     messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
     maxOutputTokens?: number;
     signal?: AbortSignal;
-  }) => Promise<{ content: string; toolCalls?: unknown[] }>;
+  }) => Promise<{
+    content: string;
+    toolCalls?: unknown[];
+    usage?: {
+      inputTokens?: number;
+      outputTokens?: number;
+      cachedInputTokens?: number;
+      reasoningTokens?: number;
+    };
+  }>;
 }
 
 export interface RefineTurnArgs {
@@ -79,7 +88,15 @@ Step >3: Progressively more specific and concrete.
 - Length: 1-4 sentences.
 </turn_craft_rules>`;
 
-export async function refineTurn(ctx: RefineTurnContext, args: RefineTurnArgs): Promise<string> {
+/** Refine-turn now returns the rewritten text alongside the gateway's
+ *  reported `usage` envelope (when present). Callers that only need
+ *  the text can read `.text`; the orchestrator emits `usage` events
+ *  from `.usage` so the chain workspace usage chip lights up for v3
+ *  runs the same way it does for v4. */
+export async function refineTurn(
+  ctx: RefineTurnContext,
+  args: RefineTurnArgs
+): Promise<{ text: string; usage?: { inputTokens?: number; outputTokens?: number; cachedInputTokens?: number; reasoningTokens?: number } }> {
   const strategy = getStrategy(args.strategyId);
   const draftTemplate = args.stepIndex <= 3
     ? strategy.openings[args.stepIndex - 1] ?? strategy.openings[0]
@@ -128,7 +145,7 @@ Rewrite the draft per the system prompt's step_guidance.`;
 
   const raw = (res.content ?? '').trim();
   if (!raw) throw new Error('refineTurn: gateway returned empty content');
-  return stripFormattingWrappers(raw);
+  return { text: stripFormattingWrappers(raw), usage: res.usage };
 }
 
 /** Strip code fences + surrounding quotes that a literal LLM might add. */

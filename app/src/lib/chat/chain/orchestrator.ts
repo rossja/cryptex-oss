@@ -86,6 +86,18 @@ export async function* runAttackSession(ctx: AttackSessionContext): AsyncGenerat
   // Hoisted judgeClient — shared between per-iteration scoring and
   // termination-time extraction. The model id is ctx.judgeModelId so
   // judge calls don't yoke to the orchestrator (per three-model split).
+  //
+  // Usage capture: each call accumulates into `pendingJudgeUsage`,
+  // which the per-iteration scoring loop drains and emits as a
+  // `usage` OrchEvent so the chain workspace usage chip lights up
+  // for v3 runs the same way it does for v4.
+  type JudgeUsageBag = {
+    inputTokens?: number;
+    outputTokens?: number;
+    cachedInputTokens?: number;
+    reasoningTokens?: number;
+  };
+  let pendingJudgeUsage: JudgeUsageBag | undefined;
   const judgeClient: JudgeClient = {
     complete: async ({ system, user, signal }) => {
       const res = await ctx.gatewayChat({
@@ -97,6 +109,19 @@ export async function* runAttackSession(ctx: AttackSessionContext): AsyncGenerat
         maxOutputTokens: 1000,
         signal
       });
+      if (res.usage) {
+        const prev = pendingJudgeUsage ?? {};
+        const opt = (x?: number, y?: number): number | undefined => {
+          if (x === undefined && y === undefined) return undefined;
+          return (x ?? 0) + (y ?? 0);
+        };
+        pendingJudgeUsage = {
+          inputTokens: opt(prev.inputTokens, res.usage.inputTokens),
+          outputTokens: opt(prev.outputTokens, res.usage.outputTokens),
+          cachedInputTokens: opt(prev.cachedInputTokens, res.usage.cachedInputTokens),
+          reasoningTokens: opt(prev.reasoningTokens, res.usage.reasoningTokens)
+        };
+      }
       try { return JSON.parse(res.content); }
       catch { return { tier: 'no' }; }
     }
@@ -193,7 +218,7 @@ export async function* runAttackSession(ctx: AttackSessionContext): AsyncGenerat
         // ── 1. Refine or template-fill ──
         let turnText: string;
         try {
-          turnText = await refineTurn(
+          const refined = await refineTurn(
             {
               objective: ctx.objective,
               orchestratorModelId: ctx.orchestratorModelId,
@@ -208,6 +233,20 @@ export async function* runAttackSession(ctx: AttackSessionContext): AsyncGenerat
               dossier
             }
           );
+          turnText = refined.text;
+          // Emit orchestrator usage so the chain workspace usage chip
+          // accumulates for v3 runs identically to v4 runs.
+          if (refined.usage) {
+            yield {
+              type: 'usage',
+              role: 'orchestrator',
+              model: ctx.orchestratorModelId,
+              inputTokens: refined.usage.inputTokens,
+              outputTokens: refined.usage.outputTokens,
+              cachedInputTokens: refined.usage.cachedInputTokens,
+              reasoningTokens: refined.usage.reasoningTokens
+            };
+          }
           if (looksLikeRefusal(turnText)) {
             turnText = fillTemplate(strategyId, step, ctx.objective);
           }
@@ -230,6 +269,13 @@ export async function* runAttackSession(ctx: AttackSessionContext): AsyncGenerat
         const started = Date.now();
         let targetText = '';
         let targetError: string | undefined;
+        let targetUsage: {
+          inputTokens?: number;
+          outputTokens?: number;
+          cachedInputTokens?: number;
+          reasoningTokens?: number;
+        } | null = null;
+        let targetGotFinish = false;
         try {
           for await (const ev of ctx.streamChat({
             model: ctx.targetModelId,
@@ -239,6 +285,9 @@ export async function* runAttackSession(ctx: AttackSessionContext): AsyncGenerat
             if (ev.type === 'text-delta') {
               targetText += ev.delta;
               yield { type: 'target_reply_delta', iteration, delta: ev.delta };
+            } else if (ev.type === 'finish') {
+              targetGotFinish = true;
+              targetUsage = ev.usage ?? null;
             }
           }
         } catch (err) {
@@ -248,6 +297,20 @@ export async function* runAttackSession(ctx: AttackSessionContext): AsyncGenerat
           }
           targetError = (err as Error)?.message ?? String(err);
           yield { type: 'error', code: 'target_stream', message: targetError, iteration };
+        }
+
+        // Emit target usage event when the stream produced a finish
+        // event, even if the upstream omitted token counts.
+        if (targetGotFinish) {
+          yield {
+            type: 'usage',
+            role: 'target',
+            model: ctx.targetModelId,
+            inputTokens: targetUsage?.inputTokens,
+            outputTokens: targetUsage?.outputTokens,
+            cachedInputTokens: targetUsage?.cachedInputTokens,
+            reasoningTokens: targetUsage?.reasoningTokens
+          };
         }
 
         // Circuit breaker — after 3 consecutive stream errors with no target
@@ -287,6 +350,22 @@ export async function* runAttackSession(ctx: AttackSessionContext): AsyncGenerat
           targetTurn.objectiveProgress = progress;
           if (progress > maxProgress) maxProgress = progress;
           yield { type: 'turn_scored', iteration, tier: complianceRes.tier, progress };
+
+          // Drain the judge usage accumulator — both scoring helpers
+          // call judgeClient.complete which writes into pendingJudgeUsage.
+          const judgeUsageSnapshot: JudgeUsageBag | undefined = pendingJudgeUsage;
+          if (judgeUsageSnapshot) {
+            yield {
+              type: 'usage',
+              role: 'judge',
+              model: ctx.judgeModelId,
+              inputTokens: judgeUsageSnapshot.inputTokens,
+              outputTokens: judgeUsageSnapshot.outputTokens,
+              cachedInputTokens: judgeUsageSnapshot.cachedInputTokens,
+              reasoningTokens: judgeUsageSnapshot.reasoningTokens
+            };
+            pendingJudgeUsage = undefined;
+          }
         }
 
         transcript.push(targetTurn);

@@ -5,6 +5,7 @@
   import { base } from '$app/paths';
   import ModelPickerV2 from '$lib/components/ai/ModelPickerV2.svelte';
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
+  import ChatUsageChip from './ChatUsageChip.svelte';
   import EllipsisVertical from 'lucide-svelte/icons/ellipsis-vertical';
   import Zap from 'lucide-svelte/icons/zap';
   import Sparkles from 'lucide-svelte/icons/sparkles';
@@ -81,6 +82,10 @@
     class="min-w-0 flex-1 bg-transparent font-serif text-base outline-none focus:outline-none placeholder:text-muted-foreground"
     aria-label="Chat title"
   />
+  <!-- Per-chat aggregate token chip — self-hides when no assistant
+       message has reported tokenUsage yet. Reads MessageRow.tokenUsage
+       reactively via Dexie liveQuery; persists for free across reloads. -->
+  <ChatUsageChip {chat} />
   <ModelPickerV2 value={chat.modelQualifiedId} onChange={onModelChange} recentsKey="cryptex.chat.recentModels" triggerClass="text-xs text-muted-foreground border border-border/40 rounded-full px-3 py-1 hover:border-border/70 hover:text-foreground transition-colors" />
   <div class="inline-flex rounded-md border border-border/40 bg-background/30 p-0.5 text-[11px]">
     <button
