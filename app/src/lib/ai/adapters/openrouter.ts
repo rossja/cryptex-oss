@@ -62,9 +62,18 @@ export function openrouterAdapter(record: Extract<ProviderRecord, { id: 'openrou
         const pricing = r.pricing as { prompt?: string; completion?: string } | undefined;
         const promptPrice = pricing?.prompt;
         const completionPrice = pricing?.completion;
+        const promptUsd = typeof promptPrice === 'string' ? parseFloat(promptPrice) : Number(promptPrice);
+        const completionUsd = typeof completionPrice === 'string' ? parseFloat(completionPrice) : Number(completionPrice);
         const isFree =
           (promptPrice === '0' || Number(promptPrice) === 0) &&
           (completionPrice === '0' || Number(completionPrice) === 0);
+        // Populate Model.pricing for the cost chip and any other surface
+        // that wants per-token USD. OpenRouter publishes per-token (not
+        // per-million) so we copy verbatim. Skip when either side is NaN.
+        const modelPricing =
+          Number.isFinite(promptUsd) && Number.isFinite(completionUsd)
+            ? { promptUsd, completionUsd }
+            : undefined;
         out.push({
           id,
           qualifiedId: `openrouter:${id}`,
@@ -73,7 +82,8 @@ export function openrouterAdapter(record: Extract<ProviderRecord, { id: 'openrou
           upstreamProvider: deriveUpstream(id),
           contextLength: typeof r.context_length === 'number' ? r.context_length : undefined,
           isFree,
-          capabilities: deriveCapabilities(r)
+          capabilities: deriveCapabilities(r),
+          pricing: modelPricing
         });
       }
       out.sort((a, b) => {

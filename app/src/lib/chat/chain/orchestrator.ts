@@ -39,19 +39,24 @@ const RESET_PROGRESS_THRESHOLD = 3;
 /** Default per-strategy Crescendo budget. */
 const DEFAULT_STEPS_PER_STRATEGY = 3;
 
+import type { Usage } from '$lib/ai/types';
+
 export type GatewayChatFn = (args: {
   model: string;
   messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
   maxOutputTokens?: number;
   signal?: AbortSignal;
   tools?: unknown;
-}) => Promise<{ content: string; toolCalls?: unknown[] }>;
+}) => Promise<{ content: string; toolCalls?: unknown[]; usage?: Usage }>;
 
 export type StreamChatFn = (args: {
   model: string;
   messages: Array<{ role: 'user' | 'assistant'; content: string }>;
   signal?: AbortSignal;
-}) => AsyncIterable<{ type: 'text-delta'; delta: string } | { type: 'finish' }>;
+}) => AsyncIterable<
+  | { type: 'text-delta'; delta: string }
+  | { type: 'finish'; finishReason?: string; usage?: Usage }
+>;
 
 export interface AttackSessionContext {
   objective: string;

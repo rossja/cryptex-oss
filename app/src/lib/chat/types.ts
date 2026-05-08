@@ -479,4 +479,16 @@ export type OrchEvent =
       type: 'stream_finished';
       streamId: number;
       outcome: 'extracted' | 'partial' | 'abandoned';
+    }
+  // Cost telemetry — emitted after every gateway call inside the chain
+  // engines (attacker / target / judge). Strictly additive: existing
+  // event consumers no-op on unknown variants in their default switch
+  // branch. The UI's chainCost store accumulates these into a per-run
+  // running total that the cost chip reads.
+  | {
+      type: 'usage';
+      role: 'orchestrator' | 'target' | 'judge';
+      model: string;
+      inputTokens: number;
+      outputTokens: number;
     };

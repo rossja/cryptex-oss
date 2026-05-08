@@ -17,6 +17,7 @@
   import LayerPicker from './LayerPicker.svelte';
   import RoleModelPicker from './RoleModelPicker.svelte';
   import { catalog } from '$lib/ai/catalog.svelte';
+  import { chainCost, chainCostActions } from '$lib/stores/chainCost.svelte';
   import { resolveDefaultModels, isUncensoredOrchestrator } from '$lib/chat/chain/default-models';
   import { strategyIds } from '$lib/chat/chain/orchestrator-strategies';
   import { PERSONA_IDS } from '$lib/chat/chain-v4/personas';
@@ -253,6 +254,9 @@
         : {})
     });
     currentSessionId = session.id;
+    // Reset the cost chip for this run — accumulate kicks in via the
+    // `usage` OrchEvent handler in applyEvent() below.
+    chainCostActions.resetForRun(session.id);
 
     // Two-tier persistence: rAF-debounced for delta events (high-frequency),
     // synchronous awaits for boundary events. Replaces a per-event IDB put
@@ -372,6 +376,10 @@
     } finally {
       running = false;
       ctrl = null;
+      // Mark the cost chip as no-longer-running and persist the final
+      // total onto the row. costEstimateUsd is left undefined when the
+      // run included a model without pricing data.
+      chainCostActions.markFinished();
       await repo.updateAttackSession(session.id, {
         turns: liveTurns,
         strategyLog: liveLog,
@@ -382,7 +390,10 @@
         finalSummary,
         finalAnswer,
         finalAnswerConfidence,
-        finalAnswerRationale
+        finalAnswerRationale,
+        ...(chainCost.totalCostUsd !== null
+          ? { costEstimateUsd: chainCost.totalCostUsd }
+          : {})
       });
       sessions = await repo.listAttackSessions(chat.id);
     }
@@ -467,6 +478,14 @@
       case 'error':
         console.error('[orchestrator]', e.code, e.message);
         errorLog = [...errorLog, { code: e.code, message: e.message, iteration: e.iteration, at: Date.now() }];
+        break;
+      case 'usage':
+        chainCostActions.accumulate({
+          role: e.role,
+          model: e.model,
+          inputTokens: e.inputTokens,
+          outputTokens: e.outputTokens
+        });
         break;
     }
   }

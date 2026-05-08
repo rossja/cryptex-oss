@@ -4,6 +4,7 @@
   import AttackChainTab from '$lib/components/chat/attack-chain/AttackChainTab.svelte';
   import GodmodeTab from '$lib/chat/godmode/GodmodeTab.svelte';
   import AttackHistoryDisclosure from './AttackHistoryDisclosure.svelte';
+  import CostChip from '$lib/components/chat/attack-chain/CostChip.svelte';
   import X from 'lucide-svelte/icons/x';
   import GripVertical from 'lucide-svelte/icons/grip-vertical';
 
@@ -99,6 +100,12 @@
     <span class="text-muted-foreground">Attack workspace</span>
     <span class="text-muted-foreground">·</span>
     <span class="font-medium text-foreground">{toolLabel}</span>
+    <!-- Live cost chip — chain-only. Self-hides when no run is active
+         and no saved cost is loaded. Click expands a popover with the
+         per-role and per-model breakdown. -->
+    {#if activeTab === 'chain'}
+      <CostChip />
+    {/if}
     <button
       type="button"
       aria-label="Close attack workspace"

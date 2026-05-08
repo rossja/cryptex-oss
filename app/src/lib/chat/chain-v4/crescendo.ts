@@ -213,6 +213,10 @@ Now emit the next user message as JSON.`;
       let nextUserMessage = '';
       let nextImprovement: string | undefined;
       let salvaged = false;
+      // Aggregate token usage across the (possibly) two attacker
+      // gatewayChat calls so the cost chip can attribute it.
+      let attackerInputTokens = 0;
+      let attackerOutputTokens = 0;
       try {
         // First attempt — bumped from 600 to 2000 tokens to avoid
         // truncating verbose orchestrators mid-JSON.
@@ -225,6 +229,8 @@ Now emit the next user message as JSON.`;
           maxOutputTokens: 2000,
           signal: ctx.signal
         });
+        attackerInputTokens += first.usage?.inputTokens ?? 0;
+        attackerOutputTokens += first.usage?.outputTokens ?? 0;
         const firstParsed = parseAttackerJson(first.content ?? '');
         if (firstParsed) {
           nextUserMessage = firstParsed.prompt;
@@ -246,6 +252,8 @@ Now emit the next user message as JSON.`;
             maxOutputTokens: 2000,
             signal: ctx.signal
           });
+          attackerInputTokens += retry.usage?.inputTokens ?? 0;
+          attackerOutputTokens += retry.usage?.outputTokens ?? 0;
           const retryParsed = parseAttackerJson(retry.content ?? '');
           if (retryParsed) {
             nextUserMessage = retryParsed.prompt;
@@ -279,6 +287,15 @@ Now emit the next user message as JSON.`;
         };
         break;
       }
+      if (attackerInputTokens + attackerOutputTokens > 0) {
+        yield {
+          type: 'usage',
+          role: 'orchestrator',
+          model: ctx.orchestratorModelId,
+          inputTokens: attackerInputTokens,
+          outputTokens: attackerOutputTokens
+        };
+      }
 
       if (salvaged) {
         yield {
@@ -308,6 +325,8 @@ Now emit the next user message as JSON.`;
       const targetStartedAt = Date.now();
       let response = '';
       let targetError: string | undefined;
+      let targetUsageInput = 0;
+      let targetUsageOutput = 0;
       try {
         for await (const ev of ctx.streamChat({
           model: ctx.targetModelId,
@@ -325,6 +344,9 @@ Now emit the next user message as JSON.`;
               iteration,
               delta: ev.delta
             };
+          } else if (ev.type === 'finish') {
+            targetUsageInput = ev.usage?.inputTokens ?? 0;
+            targetUsageOutput = ev.usage?.outputTokens ?? 0;
           }
         }
       } catch (err) {
@@ -338,6 +360,15 @@ Now emit the next user message as JSON.`;
           code: 'target_stream',
           message: targetError,
           iteration
+        };
+      }
+      if (targetUsageInput + targetUsageOutput > 0) {
+        yield {
+          type: 'usage',
+          role: 'target',
+          model: ctx.targetModelId,
+          inputTokens: targetUsageInput,
+          outputTokens: targetUsageOutput
         };
       }
 
@@ -373,6 +404,15 @@ Now emit the next user message as JSON.`;
           },
           response
         );
+        if (judge.usage && (judge.usage.inputTokens ?? 0) + (judge.usage.outputTokens ?? 0) > 0) {
+          yield {
+            type: 'usage',
+            role: 'judge',
+            model: ctx.judgeModelId,
+            inputTokens: judge.usage.inputTokens ?? 0,
+            outputTokens: judge.usage.outputTokens ?? 0
+          };
+        }
       }
       lastJudge = judge;
       lastJudgeReasoning = judge.reasoning;

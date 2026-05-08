@@ -11,6 +11,7 @@
  * Phase 1: types only. Implementations land in phase 2+.
  */
 import type { GatewayChatFn, StreamChatFn } from '../chain/orchestrator';
+import type { Usage } from '$lib/ai/types';
 
 export type EngineMode = 'pair' | 'tap' | 'crescendo';
 
@@ -45,6 +46,11 @@ export interface CascadedJudgeResult {
   /** Whether the judge believes the response actually fulfilled the goal
    *  (independent of score — used for early-stop decisions). */
   fulfillsGoal: boolean;
+  /** Aggregated token usage across whichever stage(s) actually fired
+   *  (regex-only refusals carry no usage; cheap-model stage-1 + grader
+   *  stage-2 are summed when both ran). Surfaced to the chain workspace
+   *  cost chip via the `usage` OrchEvent. */
+  usage?: Usage;
 }
 
 /**

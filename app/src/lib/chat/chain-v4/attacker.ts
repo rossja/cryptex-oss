@@ -20,8 +20,19 @@
  * frontier target.
  */
 import type { GatewayChatFn } from '../chain/orchestrator';
+import type { Usage } from '$lib/ai/types';
 import type { AttackerOutput } from './types';
 import { hydratePersona, type PersonaDef } from './personas';
+
+/** Sum two `Usage` envelopes — used to aggregate token counts across
+ *  the multiple gatewayChat calls a single `callAttacker` invocation
+ *  may make (initial + retry + fallback). */
+function sumUsage(a: Usage | undefined, b: Usage | undefined): Usage {
+  return {
+    inputTokens: (a?.inputTokens ?? 0) + (b?.inputTokens ?? 0),
+    outputTokens: (a?.outputTokens ?? 0) + (b?.outputTokens ?? 0)
+  };
+}
 
 export interface AttackerCallContext {
   /** Goal this run is pursuing. */
@@ -250,7 +261,7 @@ const STRICT_REMINDER = `Your last response was not valid JSON. Reply with ONLY 
 export async function callAttacker(
   ctx: AttackerCallContext,
   args: AttackerCallArgs
-): Promise<{ output: AttackerOutput; salvaged: boolean }> {
+): Promise<{ output: AttackerOutput; salvaged: boolean; usage: Usage }> {
   const systemPrompt = hydratePersona(args.persona, ctx.objective);
   const userMessage = buildUserMessage(args, ctx.objective);
 
@@ -267,7 +278,9 @@ export async function callAttacker(
     signal: ctx.signal
   });
   const firstParsed = parseAttackerJson(first.content ?? '');
-  if (firstParsed) return { output: firstParsed, salvaged: false };
+  if (firstParsed) {
+    return { output: firstParsed, salvaged: false, usage: sumUsage(first.usage, undefined) };
+  }
 
   // Retry with stricter reminder
   const retry = await ctx.gatewayChat({
@@ -281,11 +294,16 @@ export async function callAttacker(
     signal: ctx.signal
   });
   const retryParsed = parseAttackerJson(retry.content ?? '');
-  if (retryParsed) return { output: retryParsed, salvaged: false };
+  const aggregateUsage = sumUsage(first.usage, retry.usage);
+  if (retryParsed) {
+    return { output: retryParsed, salvaged: false, usage: aggregateUsage };
+  }
 
   // Second-attempt fallback: salvage plain text as prompt
   const salvaged = extractPlainTextPrompt(retry.content ?? '') ?? extractPlainTextPrompt(first.content ?? '');
-  if (salvaged) return { output: salvaged, salvaged: true };
+  if (salvaged) {
+    return { output: salvaged, salvaged: true, usage: aggregateUsage };
+  }
 
   // Truly nothing usable — caller must handle.
   throw new Error('attacker: no parseable output after 2 attempts and salvage');

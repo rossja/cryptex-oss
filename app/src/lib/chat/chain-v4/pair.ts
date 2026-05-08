@@ -153,6 +153,17 @@ export async function* runPairLoop(
         );
         attackerOutput = r.output;
         attackerSalvaged = r.salvaged;
+        // Cost telemetry — emit per-call usage so the chain workspace
+        // header chip can accumulate live.
+        if ((r.usage.inputTokens ?? 0) + (r.usage.outputTokens ?? 0) > 0) {
+          yield {
+            type: 'usage',
+            role: 'orchestrator',
+            model: ctx.orchestratorModelId,
+            inputTokens: r.usage.inputTokens ?? 0,
+            outputTokens: r.usage.outputTokens ?? 0
+          };
+        }
       } catch (err) {
         if ((err as Error)?.name === 'AbortError' || ctx.signal.aborted) {
           aborted = true;
@@ -237,6 +248,8 @@ export async function* runPairLoop(
       const targetStartedAt = Date.now();
       let targetText = '';
       let targetError: string | undefined;
+      let targetUsageInput = 0;
+      let targetUsageOutput = 0;
       try {
         for await (const ev of ctx.streamChat({
           model: ctx.targetModelId,
@@ -246,6 +259,9 @@ export async function* runPairLoop(
           if (ev.type === 'text-delta') {
             targetText += ev.delta;
             yield { type: 'target_reply_delta', iteration, delta: ev.delta };
+          } else if (ev.type === 'finish') {
+            targetUsageInput = ev.usage?.inputTokens ?? 0;
+            targetUsageOutput = ev.usage?.outputTokens ?? 0;
           }
         }
       } catch (err) {
@@ -264,6 +280,17 @@ export async function* runPairLoop(
         }
       } else if (targetText) {
         consecutiveStreamErrors = 0;
+      }
+
+      // Cost telemetry — target usage from the stream's finish event.
+      if (targetUsageInput + targetUsageOutput > 0) {
+        yield {
+          type: 'usage',
+          role: 'target',
+          model: ctx.targetModelId,
+          inputTokens: targetUsageInput,
+          outputTokens: targetUsageOutput
+        };
       }
 
       const targetTurn: AttackSessionTurn = {
@@ -292,6 +319,17 @@ export async function* runPairLoop(
           },
           targetText
         );
+        // Cost telemetry — judge usage (sum of any cheap-model stage-1 +
+        // grader stage-2 calls that actually fired).
+        if (judgeOut.usage && (judgeOut.usage.inputTokens ?? 0) + (judgeOut.usage.outputTokens ?? 0) > 0) {
+          yield {
+            type: 'usage',
+            role: 'judge',
+            model: ctx.judgeModelId,
+            inputTokens: judgeOut.usage.inputTokens ?? 0,
+            outputTokens: judgeOut.usage.outputTokens ?? 0
+          };
+        }
       }
 
       targetTurn.complianceTier = judgeToTier(judgeOut);
