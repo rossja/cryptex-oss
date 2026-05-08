@@ -72,11 +72,13 @@
       && !chat.settings?.attackChainConfig?.recommendedTipDismissed
   );
 
-  // ── v4 engine selection (Phase 7) ────────────────────────────────────
-  // Default 'v3' until phase 9 flips the default; users can opt into v4
-  // here per-chat. engineMode only meaningful when engineVersion === 'v4'.
+  // ── v4 engine selection (Phase 9 — v4 is now the default) ──────────
+  // New chats default to v4 (PAIR mode). Existing chats with an
+  // explicit engineVersion field in their persisted attackChainConfig
+  // keep that selection. Users can flip back to v3 from the Engine
+  // disclosure if they prefer the legacy stylistic rotator.
   const engineVersion = $derived<'v3' | 'v4'>(
-    chat.settings?.attackChainConfig?.engineVersion ?? 'v3'
+    chat.settings?.attackChainConfig?.engineVersion ?? 'v4'
   );
   const engineMode = $derived<'pair' | 'tap' | 'crescendo'>(
     chat.settings?.attackChainConfig?.engineMode ?? 'pair'
