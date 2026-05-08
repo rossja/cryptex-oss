@@ -1,20 +1,36 @@
-import { db } from '$lib/chat/db';
-import { session } from '$lib/auth/session.svelte';
-import type { ToolStateRow } from '$lib/chat/types';
+import { browser } from '$app/environment';
 
-function ownerId(): string { return session.currentUser.id; }
+const STORAGE_KEY = 'cryptex.toolStates';
+
+function readAll(): Record<string, unknown> {
+  if (!browser) return {};
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+  } catch {
+    return {};
+  }
+}
+
+function writeAll(data: Record<string, unknown>): void {
+  if (!browser) return;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch { /* quota exceeded — best-effort */ }
+}
 
 export const toolRepo = {
   async saveToolState(toolId: string, state: unknown): Promise<void> {
-    await db.toolStates.put({
-      toolId, ownerId: ownerId(), state, updatedAt: Date.now()
-    } satisfies ToolStateRow);
+    const all = readAll();
+    all[toolId] = state;
+    writeAll(all);
   },
   async loadToolState<T = unknown>(toolId: string): Promise<T | null> {
-    const row = await db.toolStates.get([toolId, ownerId()]);
-    return (row?.state as T) ?? null;
+    const all = readAll();
+    return (all[toolId] as T) ?? null;
   },
   async deleteToolState(toolId: string): Promise<void> {
-    await db.toolStates.delete([toolId, ownerId()]);
+    const all = readAll();
+    delete all[toolId];
+    writeAll(all);
   }
 };
