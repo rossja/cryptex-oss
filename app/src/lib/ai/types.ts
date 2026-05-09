@@ -132,4 +132,8 @@ export type ProviderPreset = {
   docsUrl: string;
   defaultTestModel?: string;
   supportsAuthProbe: boolean;
+  /** Hardcoded fallback model list — used if /v1/models fetch fails or returns empty.
+   *  For cloud providers, populate with the provider's commonly-available model IDs.
+   *  Local providers (Ollama, LM Studio, etc.) leave this empty since users define their own. */
+  defaultModels?: string[];
 };

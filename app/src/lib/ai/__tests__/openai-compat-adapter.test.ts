@@ -34,7 +34,7 @@ describe('openaiCompatAdapter', () => {
     expect(list[0].providerInstanceId).toBe('abc-123');
   });
 
-  it('fetchCatalog returns empty and does not throw on 404 /models', async () => {
+  it('fetchCatalog returns empty and does not throw on 404 /models for custom preset', async () => {
     global.fetch = vi.fn().mockResolvedValue(new Response('', { status: 404 }));
     const mod = await import('../adapters/openai-compat');
     const a = mod.openaiCompatAdapter({
@@ -45,7 +45,7 @@ describe('openaiCompatAdapter', () => {
     expect(list).toEqual([]);
   });
 
-  it('fetchCatalog returns empty on fetch TypeError (network)', async () => {
+  it('fetchCatalog returns empty on fetch TypeError for custom preset', async () => {
     global.fetch = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
     const mod = await import('../adapters/openai-compat');
     const a = mod.openaiCompatAdapter({
@@ -56,7 +56,7 @@ describe('openaiCompatAdapter', () => {
     expect(list).toEqual([]);
   });
 
-  it('fetchCatalog returns empty on 500', async () => {
+  it('fetchCatalog returns empty on 500 for custom preset', async () => {
     global.fetch = vi.fn().mockResolvedValue(new Response('boom', { status: 500 }));
     const mod = await import('../adapters/openai-compat');
     const a = mod.openaiCompatAdapter({
@@ -67,7 +67,7 @@ describe('openaiCompatAdapter', () => {
     expect(list).toEqual([]);
   });
 
-  it('fetchCatalog returns empty when response has no data field', async () => {
+  it('fetchCatalog returns empty when response has no data field for custom preset', async () => {
     global.fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ something: 'else' }), { status: 200 }));
     const mod = await import('../adapters/openai-compat');
     const a = mod.openaiCompatAdapter({
@@ -76,6 +76,91 @@ describe('openaiCompatAdapter', () => {
     });
     const list = await a.fetchCatalog();
     expect(list).toEqual([]);
+  });
+
+  it('fetchCatalog falls back to preset.defaultModels on fetch TypeError (DeepSeek CORS-block scenario)', async () => {
+    // DeepSeek's /chat/completions has CORS but /models does not — fetch throws
+    // TypeError. The adapter should surface the curated default model list so
+    // the user can pick deepseek-chat / deepseek-reasoner without typing.
+    global.fetch = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+    const mod = await import('../adapters/openai-compat');
+    const a = mod.openaiCompatAdapter({
+      id: 'openai-compat', instanceId: 'ds-1', name: 'DeepSeek',
+      presetId: 'deepseek', baseURL: 'https://api.deepseek.com/v1',
+      apiKey: 'sk-test', enabled: true
+    });
+    const list = await a.fetchCatalog();
+    expect(list.length).toBeGreaterThanOrEqual(2);
+    const ids = list.map((m) => m.id);
+    expect(ids).toContain('deepseek-chat');
+    expect(ids).toContain('deepseek-reasoner');
+    // Qualified IDs must use this instance's id, not openrouter:
+    for (const m of list) {
+      expect(m.qualifiedId.startsWith('openai-compat:ds-1/')).toBe(true);
+      expect(m.provider).toBe('openai-compat');
+      expect(m.providerInstanceId).toBe('ds-1');
+    }
+  });
+
+  it('fetchCatalog falls back to preset.defaultModels on 500', async () => {
+    global.fetch = vi.fn().mockResolvedValue(new Response('boom', { status: 500 }));
+    const mod = await import('../adapters/openai-compat');
+    const a = mod.openaiCompatAdapter({
+      id: 'openai-compat', instanceId: 'oa-1', name: 'OpenAI',
+      presetId: 'openai', baseURL: 'https://api.openai.com/v1',
+      apiKey: 'sk-test', enabled: true
+    });
+    const list = await a.fetchCatalog();
+    expect(list.length).toBeGreaterThan(0);
+    const ids = list.map((m) => m.id);
+    expect(ids).toContain('gpt-4o');
+    expect(ids).toContain('gpt-4o-mini');
+  });
+
+  it('fetchCatalog falls back to preset.defaultModels when /models returns empty data array', async () => {
+    // Some providers reply with `{data: []}` when auth is wrong but the endpoint
+    // still answers. Treat that the same as a failed fetch.
+    global.fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: [] }), { status: 200 }));
+    const mod = await import('../adapters/openai-compat');
+    const a = mod.openaiCompatAdapter({
+      id: 'openai-compat', instanceId: 'gr-1', name: 'Groq',
+      presetId: 'groq', baseURL: 'https://api.groq.com/openai/v1',
+      apiKey: 'gsk-x', enabled: true
+    });
+    const list = await a.fetchCatalog();
+    expect(list.length).toBeGreaterThan(0);
+    const ids = list.map((m) => m.id);
+    expect(ids).toContain('llama-3.3-70b-versatile');
+  });
+
+  it('fetchCatalog returns empty array for local preset with no defaultModels when /models fails', async () => {
+    // Local providers (LM Studio, Ollama, vLLM, Llama.cpp) leave defaultModels
+    // undefined — users define their own model names. If /models fails, the
+    // catalog is empty and the picker shows free-text input.
+    global.fetch = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+    const mod = await import('../adapters/openai-compat');
+    const a = mod.openaiCompatAdapter({
+      id: 'openai-compat', instanceId: 'lm-1', name: 'LM Studio',
+      presetId: 'lmstudio', baseURL: 'http://localhost:1234/v1',
+      apiKey: '', enabled: true
+    });
+    const list = await a.fetchCatalog();
+    expect(list).toEqual([]);
+  });
+
+  it('fetchCatalog prefers live /models response over fallback when present', async () => {
+    global.fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      data: [{ id: 'live-only-model' }]
+    }), { status: 200 }));
+    const mod = await import('../adapters/openai-compat');
+    const a = mod.openaiCompatAdapter({
+      id: 'openai-compat', instanceId: 'ds-2', name: 'DeepSeek',
+      presetId: 'deepseek', baseURL: 'https://api.deepseek.com/v1',
+      apiKey: 'sk-test', enabled: true
+    });
+    const list = await a.fetchCatalog();
+    expect(list).toHaveLength(1);
+    expect(list[0].id).toBe('live-only-model');
   });
 });
 

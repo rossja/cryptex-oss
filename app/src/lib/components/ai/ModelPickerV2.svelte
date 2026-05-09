@@ -2,7 +2,8 @@
   import { catalog, initCatalogStore } from '$lib/ai/catalog.svelte';
   import { createPersistedState } from '$lib/stores/_persisted.svelte';
   import { onOpenModelPicker } from '$lib/stores/shortcuts.svelte';
-  import type { Model } from '$lib/ai/types';
+  import { listProviders } from '$lib/ai/providers.svelte';
+  import type { Model, ProviderRecord } from '$lib/ai/types';
   import ModelRow from './ModelRow.svelte';
   import Search from 'lucide-svelte/icons/search';
 
@@ -54,6 +55,22 @@
     recents.value.map((id) => catalog.find(id)).filter((m): m is Model => Boolean(m)).slice(0, 5)
   );
 
+  /** Configured providers, used for the free-text fallback chip row. */
+  const configuredProviders = $derived<ProviderRecord[]>(listProviders().filter((p) => p.enabled));
+
+  /** Build the qualifiedId for a free-text model id under a specific provider. */
+  function qualifiedIdFor(rec: ProviderRecord, modelId: string): string {
+    if (rec.id === 'openai-compat') return `openai-compat:${rec.instanceId}/${modelId}`;
+    return `${rec.id}:${modelId}`;
+  }
+
+  /** Display label for a configured provider chip. */
+  function providerLabel(rec: ProviderRecord): string {
+    if (rec.id === 'openrouter') return 'OpenRouter';
+    if (rec.id === 'anthropic') return 'Anthropic';
+    return rec.name;
+  }
+
   function choose(m: Model) {
     onChange(m.qualifiedId);
     const next = [m.qualifiedId, ...recents.value.filter((x) => x !== m.qualifiedId)].slice(0, 5);
@@ -61,17 +78,47 @@
     open = false;
   }
 
+  /** Free-text fallback: route the typed model id through the picked provider. */
+  function chooseFreeText(rec: ProviderRecord) {
+    const modelId = query.trim();
+    if (!modelId) return;
+    const qid = qualifiedIdFor(rec, modelId);
+    let upstream = 'Custom';
+    if (rec.id === 'openrouter') upstream = 'OpenRouter';
+    else if (rec.id === 'anthropic') upstream = 'Anthropic';
+    else upstream = rec.name;
+    choose({
+      id: modelId,
+      qualifiedId: qid,
+      name: modelId,
+      provider: rec.id,
+      upstreamProvider: upstream,
+      ...(rec.id === 'openai-compat' ? { providerInstanceId: rec.instanceId } : {})
+    });
+  }
+
   function onKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') open = false;
     if (e.key === 'Enter' && filtered.length === 0 && query.trim()) {
-      // free-text fallback
-      choose({
-        id: query.trim(),
-        qualifiedId: query.trim().includes(':') ? query.trim() : `openrouter:${query.trim()}`,
-        name: query.trim(),
-        provider: 'openrouter',
-        upstreamProvider: 'Custom'
-      });
+      const trimmed = query.trim();
+      // If the user already typed a fully qualified id (contains ':'), honor it
+      // verbatim. Otherwise route via the single configured provider; if there
+      // are multiple, the chip row in the empty-state UI lets them pick.
+      if (trimmed.includes(':')) {
+        choose({
+          id: trimmed,
+          qualifiedId: trimmed,
+          name: trimmed,
+          provider: 'openrouter', // best-effort label; gateway.resolve() routes by prefix
+          upstreamProvider: 'Custom'
+        });
+        return;
+      }
+      if (configuredProviders.length === 1) {
+        chooseFreeText(configuredProviders[0]);
+      }
+      // If 0 or >1 configured providers, the user must click a chip in the
+      // empty-state UI — there's no safe automatic default.
     }
   }
 
@@ -150,10 +197,27 @@
         {/each}
 
         {#if filtered.length === 0}
-          <div class="flex flex-col items-center gap-2 p-8 text-center text-sm text-muted-foreground">
+          <div class="flex flex-col items-center gap-3 p-8 text-center text-sm text-muted-foreground">
             {#if query.trim()}
               <p>No models match <span class="font-mono text-xs text-foreground/80">"{query.trim()}"</span>.</p>
-              <p class="text-xs">Press <kbd class="rounded border border-white/15 bg-black/30 px-1.5 py-0.5 text-[10px]">Enter</kbd> to use <span class="font-mono text-xs text-foreground/80">"{query.trim()}"</span> as a custom model id.</p>
+              {#if configuredProviders.length === 0}
+                <p class="text-xs">Configure a provider in Settings first.</p>
+              {:else if configuredProviders.length === 1}
+                <p class="text-xs">Press <kbd class="rounded border border-white/15 bg-black/30 px-1.5 py-0.5 text-[10px]">Enter</kbd> to use <span class="font-mono text-xs text-foreground/80">"{query.trim()}"</span> via <span class="font-medium text-foreground/80">{providerLabel(configuredProviders[0])}</span>.</p>
+              {:else}
+                <p class="text-xs">Pick which provider to route this model through:</p>
+                <div class="flex flex-wrap justify-center gap-1.5">
+                  {#each configuredProviders as rec (rec.id === 'openai-compat' ? rec.instanceId : rec.id)}
+                    <button
+                      type="button"
+                      onclick={() => chooseFreeText(rec)}
+                      class="rounded-full border border-white/10 bg-black/30 px-2.5 py-1 text-xs text-foreground/80 hover:bg-white/5 hover:border-white/20 transition-colors"
+                    >
+                      {providerLabel(rec)}
+                    </button>
+                  {/each}
+                </div>
+              {/if}
             {:else}
               No models match the filters.
             {/if}

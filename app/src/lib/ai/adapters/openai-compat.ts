@@ -2,6 +2,7 @@ import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import type { Adapter } from './base';
 import type { Model, ProviderRecord } from '../types';
 import { translateError } from '../errors';
+import { getPreset } from '../presets';
 
 /**
  * OpenAI reasoning & GPT-5 models reject `max_tokens` in favor of
@@ -140,6 +141,25 @@ export function openaiCompatAdapter(record: Extract<ProviderRecord, { id: 'opena
       throw translateError({ status: resp.status, message: body || `HTTP ${resp.status}` }, 'openai-compat');
     },
     fetchCatalog: async (signal) => {
+      // Build the fallback Model[] from the preset's defaultModels list. This
+      // is what we return when the live `/v1/models` endpoint fails for any
+      // reason — CORS block (DeepSeek's /models doesn't return CORS headers),
+      // auth refusal, server outage, or just an empty response. Cloud presets
+      // ship with curated lists; local presets (Ollama, LM Studio, vLLM, etc.)
+      // leave defaultModels undefined and the user types their own model IDs
+      // via the picker's free-text input.
+      const preset = record.presetId ? getPreset(record.presetId) : undefined;
+      const fallbackIds = preset?.defaultModels ?? [];
+      const fallbackModels: Model[] = fallbackIds.map((id) => ({
+        id,
+        qualifiedId: `openai-compat:${record.instanceId}/${id}`,
+        name: id,
+        provider: 'openai-compat',
+        providerInstanceId: record.instanceId,
+        upstreamProvider: record.name,
+        capabilities: { streaming: true, tools: true }
+      }));
+
       let resp: Response;
       try {
         resp = await fetch(`${record.baseURL}/models`, {
@@ -149,11 +169,14 @@ export function openaiCompatAdapter(record: Extract<ProviderRecord, { id: 'opena
         });
       } catch (e) {
         if ((e as Error)?.name === 'AbortError') throw e;
-        return []; // silent fallback — user will type model ids manually
+        // Network / CORS / DNS / TLS failure — return curated fallback so the
+        // model picker is never empty for cloud providers, even when /models
+        // is CORS-blocked but /chat/completions works.
+        return fallbackModels;
       }
-      if (!resp.ok) return [];
+      if (!resp.ok) return fallbackModels;
       let body: { data?: Array<Record<string, unknown>> };
-      try { body = (await resp.json()) as typeof body; } catch { return []; }
+      try { body = (await resp.json()) as typeof body; } catch { return fallbackModels; }
       const raw = body.data ?? [];
       const out: Model[] = [];
       for (const r of raw) {
@@ -170,6 +193,10 @@ export function openaiCompatAdapter(record: Extract<ProviderRecord, { id: 'opena
           capabilities: { streaming: true, tools: true }
         });
       }
+      // Some providers return `{data: []}` (e.g. when auth is wrong but the
+      // endpoint is still reachable). Treat empty live data the same as a
+      // failed fetch and surface the curated fallback list.
+      if (out.length === 0) return fallbackModels;
       out.sort((a, b) => a.name.localeCompare(b.name));
       return out;
     }

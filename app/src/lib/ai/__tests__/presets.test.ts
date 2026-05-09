@@ -51,4 +51,33 @@ describe('openai-compat presets', () => {
     expect(last.baseURL).toBe('');
     expect(last.supportsAuthProbe).toBe(false);
   });
+
+  it('all cloud presets carry a non-empty defaultModels fallback list', () => {
+    const cloudIds = ['openai', 'gemini', 'groq', 'together', 'fireworks',
+      'deepinfra', 'cerebras', 'sambanova', 'deepseek', 'nvidia'];
+    for (const id of cloudIds) {
+      const p = OPENAI_COMPAT_PRESETS.find((x) => x.id === id)!;
+      expect(p, `cloud preset ${id} missing`).toBeDefined();
+      expect(p.defaultModels, `cloud preset ${id} should ship a fallback list`).toBeDefined();
+      expect(p.defaultModels!.length, `cloud preset ${id} fallback list non-empty`).toBeGreaterThan(0);
+      // Must include the defaultTestModel so saving + verifying uses a known id.
+      if (p.defaultTestModel) {
+        expect(p.defaultModels).toContain(p.defaultTestModel);
+      }
+    }
+  });
+
+  it('local presets and custom leave defaultModels empty (users type their own)', () => {
+    const localIds = ['ollama', 'lmstudio', 'vllm', 'llamacpp', 'custom'];
+    for (const id of localIds) {
+      const p = OPENAI_COMPAT_PRESETS.find((x) => x.id === id)!;
+      expect(p.defaultModels, `local preset ${id} should NOT ship a fallback list`).toBeUndefined();
+    }
+  });
+
+  it('DeepSeek fallback list includes both deepseek-chat and deepseek-reasoner', () => {
+    const ds = OPENAI_COMPAT_PRESETS.find((x) => x.id === 'deepseek')!;
+    expect(ds.defaultModels).toContain('deepseek-chat');
+    expect(ds.defaultModels).toContain('deepseek-reasoner');
+  });
 });
