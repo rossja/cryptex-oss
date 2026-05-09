@@ -77,3 +77,24 @@ export const OPENAI_COMPAT_PRESETS: ProviderPreset[] = [
 export function getPreset(id: string): ProviderPreset | undefined {
   return OPENAI_COMPAT_PRESETS.find((p) => p.id === id);
 }
+
+/**
+ * IDs of openai-compat presets that point at a local server with no API key.
+ * These run on localhost (Ollama, LM Studio, vLLM, Llama.cpp) and don't
+ * require auth — a configured baseURL is enough for them to count as ready.
+ */
+const LOCAL_PRESET_IDS = new Set(['ollama', 'lmstudio', 'vllm', 'llamacpp']);
+
+/**
+ * True when an openai-compat preset requires the user to provide an API key.
+ *
+ * - Local presets (ollama / lmstudio / vllm / llamacpp): false — no auth.
+ * - 'custom' or unknown / undefined: true — safe default; we don't know what
+ *   the user's endpoint expects, so don't claim "configured" without a key.
+ * - Everything else (cloud presets): true.
+ */
+export function presetRequiresKey(presetId: string | undefined): boolean {
+  if (!presetId) return true;
+  if (presetId === 'custom') return true;
+  return !LOCAL_PRESET_IDS.has(presetId);
+}

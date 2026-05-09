@@ -2,7 +2,7 @@ import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import type { Adapter } from './base';
 import type { Model, ProviderRecord } from '../types';
 import { translateError } from '../errors';
-import { getPreset } from '../presets';
+import { getPreset, presetRequiresKey } from '../presets';
 import { effectiveBaseURL } from '../proxy-url';
 
 /**
@@ -106,8 +106,15 @@ export function openaiCompatAdapter(record: Extract<ProviderRecord, { id: 'opena
   return {
     id: 'openai-compat',
     instanceId: record.instanceId,
-    // baseURL check handles Custom preset before user fills it in; preset-backed records always have a non-empty baseURL.
-    isConfigured: () => Boolean(key && record.baseURL),
+    // baseURL is required for every preset (Custom starts empty until the user
+    // fills it in). For local presets (Ollama, LM Studio, vLLM, Llama.cpp) that
+    // run without auth, a baseURL alone is enough — they don't expose an API
+    // key. For cloud / custom endpoints we still require a non-empty key.
+    isConfigured: () => {
+      if (!record.baseURL) return false;
+      if (!presetRequiresKey(record.presetId)) return true;
+      return Boolean(key);
+    },
     resolveModel: (modelId) => provider(modelId),
     validateKey: async (candidate, signal) => {
       // Explicit "Verify" path — POST /chat/completions with 1-token probe using test model.

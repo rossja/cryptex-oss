@@ -11,7 +11,7 @@ import { openrouterAdapter } from './adapters/openrouter';
 import { anthropicAdapter } from './adapters/anthropic';
 import { openaiCompatAdapter } from './adapters/openai-compat';
 
-export { listProviders, hasAnyKey } from './providers.svelte';
+export { listProviders, hasAnyKey, hasAnyConfiguredProvider } from './providers.svelte';
 
 const PREFIX_RE = /^(openrouter|anthropic|openai-compat):(.+)$/;
 

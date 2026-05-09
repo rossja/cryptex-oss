@@ -1,5 +1,6 @@
 import type { ProviderRecord, ProviderId } from './types';
 import { getKeyStorage } from './storage-strategy';
+import { presetRequiresKey } from './presets';
 
 const STORAGE_KEY = 'cryptex.providers';
 
@@ -109,9 +110,41 @@ export function removeProvider(id: ProviderId, instanceId?: string): void {
   triggerCatalogRefresh();
 }
 
-export function hasAnyKey(): boolean {
-  return _records.some((p) => p.enabled && 'apiKey' in p && Boolean(p.apiKey));
+/**
+ * True when at least one enabled provider is fully configured and ready to
+ * accept calls. This is the gate the AI-backed tools use to decide whether
+ * to enable their run buttons.
+ *
+ * "Configured" means one of:
+ *   - a keyed provider (OpenRouter / Anthropic / cloud openai-compat) with
+ *     a non-empty apiKey, OR
+ *   - a key-less local openai-compat provider (Ollama, LM Studio, vLLM,
+ *     Llama.cpp) with a non-empty baseURL.
+ *
+ * The previous `hasAnyKey()` semantics gated runs on apiKey alone, which
+ * incorrectly excluded local providers that have no auth. Tools using only
+ * a local server saw "no provider configured" banners and disabled buttons.
+ */
+export function hasAnyConfiguredProvider(): boolean {
+  return _records.some((p) => {
+    if (!p.enabled) return false;
+    if (p.id === 'openai-compat') {
+      const rec = p as Extract<ProviderRecord, { id: 'openai-compat' }>;
+      if (!presetRequiresKey(rec.presetId)) {
+        return Boolean(rec.baseURL);
+      }
+      return Boolean(rec.apiKey && rec.baseURL);
+    }
+    return 'apiKey' in p && Boolean(p.apiKey);
+  });
 }
+
+/**
+ * @deprecated Use `hasAnyConfiguredProvider`. Kept as an alias so existing
+ * call-sites (tool pages, NoProviderBanner, gateway re-export) inherit the
+ * broader semantics without churn.
+ */
+export const hasAnyKey = hasAnyConfiguredProvider;
 
 // Provider records are backed by $state (see _records above); Svelte components
 // re-render automatically when any mutating function (addProvider, updateProvider,

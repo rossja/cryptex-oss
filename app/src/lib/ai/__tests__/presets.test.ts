@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { OPENAI_COMPAT_PRESETS } from '../presets';
+import { OPENAI_COMPAT_PRESETS, presetRequiresKey } from '../presets';
 
 describe('openai-compat presets', () => {
   it('includes the known cloud + local presets and Custom', () => {
@@ -79,5 +79,31 @@ describe('openai-compat presets', () => {
     const ds = OPENAI_COMPAT_PRESETS.find((x) => x.id === 'deepseek')!;
     expect(ds.defaultModels).toContain('deepseek-chat');
     expect(ds.defaultModels).toContain('deepseek-reasoner');
+  });
+});
+
+describe('presetRequiresKey', () => {
+  it('returns false for local presets (ollama, lmstudio, vllm, llamacpp)', () => {
+    expect(presetRequiresKey('ollama')).toBe(false);
+    expect(presetRequiresKey('lmstudio')).toBe(false);
+    expect(presetRequiresKey('vllm')).toBe(false);
+    expect(presetRequiresKey('llamacpp')).toBe(false);
+  });
+
+  it('returns true for cloud presets', () => {
+    for (const id of ['openai', 'gemini', 'groq', 'together', 'fireworks',
+      'deepinfra', 'cerebras', 'sambanova', 'deepseek', 'nvidia']) {
+      expect(presetRequiresKey(id), `cloud preset ${id} should require a key`).toBe(true);
+    }
+  });
+
+  it('returns true for custom preset (safe default — endpoint unknown)', () => {
+    expect(presetRequiresKey('custom')).toBe(true);
+  });
+
+  it('returns true for unknown / undefined preset id (safe default)', () => {
+    expect(presetRequiresKey(undefined)).toBe(true);
+    expect(presetRequiresKey('')).toBe(true);
+    expect(presetRequiresKey('not-a-real-preset')).toBe(true);
   });
 });

@@ -14,6 +14,68 @@ describe('openaiCompatAdapter', () => {
     expect(a.instanceId).toBe('abc-123');
   });
 
+  it('isConfigured returns true for local LM Studio provider without apiKey', async () => {
+    const mod = await import('../adapters/openai-compat');
+    const a = mod.openaiCompatAdapter({
+      id: 'openai-compat', instanceId: 'lm-1', name: 'LM Studio',
+      presetId: 'lmstudio', baseURL: 'http://localhost:1234/v1',
+      apiKey: '', enabled: true
+    });
+    expect(a.isConfigured()).toBe(true);
+  });
+
+  it('isConfigured returns true for each local preset without apiKey', async () => {
+    const mod = await import('../adapters/openai-compat');
+    for (const presetId of ['ollama', 'lmstudio', 'vllm', 'llamacpp'] as const) {
+      const a = mod.openaiCompatAdapter({
+        id: 'openai-compat', instanceId: `${presetId}-1`, name: presetId,
+        presetId, baseURL: 'http://localhost:9999/v1',
+        apiKey: '', enabled: true
+      });
+      expect(a.isConfigured(), `${presetId} should be configured without key`).toBe(true);
+    }
+  });
+
+  it('isConfigured returns false for local provider missing baseURL', async () => {
+    const mod = await import('../adapters/openai-compat');
+    const a = mod.openaiCompatAdapter({
+      id: 'openai-compat', instanceId: 'lm-1', name: 'LM Studio',
+      presetId: 'lmstudio', baseURL: '',
+      apiKey: '', enabled: true
+    });
+    expect(a.isConfigured()).toBe(false);
+  });
+
+  it('isConfigured returns false for cloud preset (Groq) without apiKey', async () => {
+    const mod = await import('../adapters/openai-compat');
+    const a = mod.openaiCompatAdapter({
+      id: 'openai-compat', instanceId: 'gr-1', name: 'Groq',
+      presetId: 'groq', baseURL: 'https://api.groq.com/openai/v1',
+      apiKey: '', enabled: true
+    });
+    expect(a.isConfigured()).toBe(false);
+  });
+
+  it('isConfigured returns true for cloud preset (Groq) with apiKey', async () => {
+    const mod = await import('../adapters/openai-compat');
+    const a = mod.openaiCompatAdapter({
+      id: 'openai-compat', instanceId: 'gr-1', name: 'Groq',
+      presetId: 'groq', baseURL: 'https://api.groq.com/openai/v1',
+      apiKey: 'gsk-x', enabled: true
+    });
+    expect(a.isConfigured()).toBe(true);
+  });
+
+  it('isConfigured returns false for custom preset without apiKey (safe default)', async () => {
+    const mod = await import('../adapters/openai-compat');
+    const a = mod.openaiCompatAdapter({
+      id: 'openai-compat', instanceId: 'cu-1', name: 'Custom',
+      presetId: 'custom', baseURL: 'https://my.test/v1',
+      apiKey: '', enabled: true
+    });
+    expect(a.isConfigured()).toBe(false);
+  });
+
   it('fetchCatalog normalizes /models response into qualified ids', async () => {
     global.fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({
       data: [
