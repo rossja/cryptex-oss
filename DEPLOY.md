@@ -1,10 +1,58 @@
 # Deploying Cryptex
 
-Cryptex is a single-container static site. Three tested targets:
+Cryptex is a single-container static site. Four tested targets:
 
-1. **[Dokploy on a VPS](#1-dokploy-on-hostinger-or-any-vps)** — recommended for self-hosters.
+0. **[Pull from GHCR (fastest)](#0-pull-from-ghcr-fastest)** — one `docker run`, zero build.
+1. **[Dokploy on a VPS](#1-dokploy-on-hostinger-or-any-vps)** — recommended for self-hosters with a custom domain + Let's Encrypt.
 2. **[Plain Docker](#2-plain-docker)** — anywhere with Docker.
 3. **[GitHub Pages](#3-github-pages)** — for forks of this repo.
+
+---
+
+## 0. Pull from GHCR (fastest)
+
+The prebuilt multi-arch image (`linux/amd64` + `linux/arm64`) is published to GHCR on every push to `main` and every `v*.*.*` tag. Use it straight from `docker run`:
+
+```bash
+docker run -d --name cryptex --restart unless-stopped \
+  -p 8080:80 ghcr.io/m4xx101/cryptex-oss:latest
+```
+
+Open <http://localhost:8080>. That's the entire install. No clone, no build.
+
+**Updates**:
+```bash
+docker pull ghcr.io/m4xx101/cryptex-oss:latest
+docker stop cryptex && docker rm cryptex
+docker run -d --name cryptex --restart unless-stopped \
+  -p 8080:80 ghcr.io/m4xx101/cryptex-oss:latest
+```
+
+**Pin to a release** instead of `:latest`:
+```bash
+docker run -d --name cryptex --restart unless-stopped \
+  -p 8080:80 ghcr.io/m4xx101/cryptex-oss:v2.0.0
+```
+
+Available tag patterns: `:latest`, `:vX.Y.Z` (exact release), `:vX.Y`, `:vX`, `:main`, `:sha-<short>`.
+
+**Compose** (drop-in replacement for `docker-compose.yml`):
+```yaml
+services:
+  cryptex:
+    image: ghcr.io/m4xx101/cryptex-oss:latest
+    container_name: cryptex
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+```
+
+Put a reverse proxy (nginx, Caddy, Traefik) in front for TLS, or skip ahead to the Dokploy section for an automated Let's Encrypt path.
 
 ---
 
@@ -53,10 +101,9 @@ Under the application's **Environment** tab:
 |---|---|---|
 | **`DOMAIN`** | `cryptex.your-domain.com` | **Required for HTTPS.** Traefik routes this host + Let's Encrypt issues a cert for it. |
 | `BASE_PATH` | *(leave empty)* | Set to `/cryptex` if serving at a subpath. |
-| `PUBLIC_ADSENSE_CLIENT` | `ca-pub-XXXXXXXXXXXXXXXX` | Optional. Omit to disable ads entirely. |
 | `TZ` | `UTC` or `Asia/Kolkata`, etc. | Container log timezone. |
 
-> **`DOMAIN` + `PUBLIC_ADSENSE_CLIENT` are build-time** — Vite inlines them into the static bundle. Changing either requires a full **Rebuild** in Dokploy, not just restart.
+> **`BASE_PATH` is build-time** — Vite inlines it into the static bundle. Changing it requires a full **Rebuild** in Dokploy, not just restart. `DOMAIN` and `TZ` are runtime; they take effect on Restart.
 
 ### 1.5. First deploy
 
@@ -82,29 +129,19 @@ curl -sI https://cryptex.your-domain.com/transforms/ | head -1
 # → HTTP/2 200
 ```
 
-### 1.8. AdSense approval flow
-
-If you set `PUBLIC_ADSENSE_CLIENT`:
-
-1. Sign into https://adsense.google.com and add `cryptex.your-domain.com` as a site.
-2. Google reviews your site (days to weeks). During review, ads don't render — but the consent banner and `<ins>` placeholders are in the DOM.
-3. Once approved, ads appear on `/guide/*` and `/about/*` only. Tool pages stay ad-free regardless of consent.
-4. Visitors see the consent banner once; **Accept** loads the AdSense script, **Reject** keeps the page script-free for that visitor.
-
 ---
 
 ## 2. Plain Docker
 
-The committed `docker-compose.yml` is **Dokploy-first** — it joins the external `dokploy-network` so Traefik can route to it. For a standalone Docker host (no Dokploy), use plain `docker build` + `docker run`:
+The committed `docker-compose.yml` is **Dokploy-first** — it joins the external `dokploy-network` so Traefik can route to it. For a standalone Docker host (no Dokploy), the easiest path is the GHCR pull from [Section 0](#0-pull-from-ghcr-fastest). To build from source instead (custom changes, fork, etc.):
 
 ```bash
-git clone https://github.com/m4xx101/cryptex.git
-cd cryptex
+git clone https://github.com/m4xx101/cryptex-oss.git
+cd cryptex-oss
 
 # Build (pass build args inline — these bake into the static bundle)
 docker build \
   --build-arg BASE_PATH="" \
-  --build-arg PUBLIC_ADSENSE_CLIENT="" \
   -t cryptex:latest .
 
 # Run
@@ -122,7 +159,7 @@ Cryptex serves on `http://localhost:8080`. Put a reverse proxy (nginx, Caddy, Tr
 
 ```bash
 docker stop cryptex && docker rm cryptex
-docker build --build-arg PUBLIC_ADSENSE_CLIENT="ca-pub-…" -t cryptex:latest .
+docker build --build-arg BASE_PATH="/cryptex" -t cryptex:latest .
 docker run -d --name cryptex --restart unless-stopped -p 8080:80 cryptex:latest
 ```
 
@@ -154,8 +191,6 @@ The workflow at `.github/workflows/deploy.yml` publishes `app/build/` to Pages o
    - Publishes `app/build/` to Pages.
 
 Pages URL: `https://<your-handle>.github.io/<repo-name>/`.
-
-> GitHub Pages **cannot set `PUBLIC_ADSENSE_CLIENT`** without exposing the value in the public workflow. For ads, use Dokploy or plain Docker.
 
 ---
 
@@ -226,13 +261,6 @@ If this fails inside the container, the build likely didn't produce `app/build/i
 
 Open the browser DevTools console. CSP violations show as `Refused to load …`. Edit `nginx.conf`'s `Content-Security-Policy` header and redeploy.
 
-### Ads don't appear after Google approval
-
-1. Visit `/settings` → check **Ad consent** = `accepted`.
-2. DevTools → Network → refresh → look for `adsbygoogle.js` loading. If absent, AdSense wasn't configured at build time — rebuild with `PUBLIC_ADSENSE_CLIENT` set.
-3. Visit `/guide/` — ads only render on content routes, never on tool routes.
-4. Google AdSense takes ~30 minutes after approval before ads actually serve inventory.
-
 ### GitHub Pages shows blank page
 
 Check repo **Settings → Pages** — Source must be **GitHub Actions**, not a branch. The workflow needs `pages: write` permission (already set in the provided workflow).
@@ -243,12 +271,12 @@ Check repo **Settings → Pages** — Source must be **GitHub Actions**, not a b
 
 | Variable | When | Default | Notes |
 |---|---|---|---|
-| `BASE_PATH` | Build-time | `""` | Subpath. Empty for root. |
-| `PUBLIC_ADSENSE_CLIENT` | Build-time | *(unset)* | `ca-pub-…` for ads. |
-| `TZ` | Runtime | `UTC` | Log timezone. |
+| `BASE_PATH` | Build-time | `""` | Subpath (e.g. `/cryptex`). Empty for root. |
+| `DOMAIN` | Deploy-time (Dokploy) | `cryptex.localhost` | Hostname for Traefik routing + Let's Encrypt. Dokploy path only. |
+| `TZ` | Runtime | `UTC` | Container log timezone. |
 | `CRYPTEX_PORT` | Runtime | `8080` | Host-side port (standalone only). |
 
-All other app state is client-side: OpenRouter key lives in `localStorage` on the visitor's machine, never on the server.
+All other app state is client-side: BYOK provider keys live in `localStorage` on the visitor's machine, never on the server.
 
 ---
 

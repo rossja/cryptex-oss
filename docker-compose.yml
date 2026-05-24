@@ -33,6 +33,10 @@
 
 services:
   cryptex:
+    # Default: build from source (Dokploy ergonomic). For a faster deploy you
+    # can swap to the prebuilt GHCR image instead — comment out the `build:`
+    # block below and uncomment this line:
+    #   image: ghcr.io/m4xx101/cryptex-oss:latest
     image: cryptex:latest
     restart: unless-stopped
 
@@ -40,7 +44,7 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        BASE_PATH: "${BASE_PATH:-}" 
+        BASE_PATH: "${BASE_PATH:-}"
     environment:
       TZ: "${TZ:-UTC}"
 
@@ -110,9 +114,10 @@ services:
       - "traefik.http.middlewares.cryptex-app-https-redirect.redirectscheme.permanent=true"
 
       # -------- OCI metadata --------
-      - "org.opencontainers.image.title=Cryptex"
-      - "org.opencontainers.image.description=AI red-teamer's text lab — 159 transforms, steganography, BYOK AI rewrites."
-      - "org.opencontainers.image.source=https://github.com/m4xx101/cryptex"
+      - "org.opencontainers.image.title=Cryptex OSS"
+      - "org.opencontainers.image.description=Open-source LLM red-teaming toolkit — 159 transforms, 25 tool surfaces, BYOK AI gateway."
+      - "org.opencontainers.image.source=https://github.com/m4xx101/cryptex-oss"
+      - "org.opencontainers.image.url=https://github.com/m4xx101/cryptex-oss"
       - "org.opencontainers.image.licenses=MIT"
 
 networks:
