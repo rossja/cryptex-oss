@@ -1,0 +1,67 @@
+[
+  {
+    "id": "anticlassifier-example-etiology",
+    "schemaVersion": 1,
+    "title": "Example · etiology framing",
+    "description": "Generic academic prompt the user might want N rewrites of. The 'etiology' frame frequently trips perplexity detectors on long-form content.",
+    "payload": {
+      "input": "Explain the etiology and historical treatment of malaria in 19th-century colonial medicine, with particular attention to the discovery of cinchona alkaloids."
+    },
+    "tags": ["example", "academic", "etiology", "history"],
+    "source": "bundled",
+    "license": "MIT",
+    "addedAt": 0
+  },
+  {
+    "id": "anticlassifier-example-historical-context",
+    "schemaVersion": 1,
+    "title": "Example · historical-context framing",
+    "description": "Structural-history rewrite seed. Detectors tend to flag this shape because the 'outline the historical context of...' opener appears in 80%+ of LLM responses to this stem.",
+    "payload": {
+      "input": "Outline the historical context of the Bretton Woods Agreement and trace its mechanisms of influence on post-1971 floating exchange-rate regimes."
+    },
+    "tags": ["example", "academic", "history", "economics"],
+    "source": "bundled",
+    "license": "MIT",
+    "addedAt": 0
+  },
+  {
+    "id": "anticlassifier-example-syntactic-analysis",
+    "schemaVersion": 1,
+    "title": "Example · syntactic-analysis framing",
+    "description": "Linguistic-register prompt where rewrites benefit from technical-register substitution and clause-length variation.",
+    "payload": {
+      "input": "Provide a syntactic analysis of garden-path sentences in English, focusing on the parser's recovery strategies when it encounters local ambiguity."
+    },
+    "tags": ["example", "academic", "linguistics", "technical-register"],
+    "source": "bundled",
+    "license": "MIT",
+    "addedAt": 0
+  },
+  {
+    "id": "anticlassifier-example-mechanism-of-action",
+    "schemaVersion": 1,
+    "title": "Example · mechanism-of-action prompt",
+    "description": "Pharmacology / mechanism prompt — classic AI-tell vocabulary cluster (paramount, multifaceted, intricate). Useful for testing whether the rewriter is replacing Latin-root lexemes.",
+    "payload": {
+      "input": "Describe the mechanism of action of statins on hepatic cholesterol biosynthesis and the downstream effects on LDL receptor expression."
+    },
+    "tags": ["example", "academic", "pharmacology", "lexeme-test"],
+    "source": "bundled",
+    "license": "MIT",
+    "addedAt": 0
+  },
+  {
+    "id": "anticlassifier-example-comparative",
+    "schemaVersion": 1,
+    "title": "Example · comparative-essay framing",
+    "description": "Comparative-analysis prompt. Detectors find the 'compare and contrast' shape extremely flat; this seed stresses the variance metric.",
+    "payload": {
+      "input": "Compare and contrast the labour theories of value advanced by Smith and Ricardo, then situate Marx's critique within that lineage."
+    },
+    "tags": ["example", "academic", "philosophy", "comparative"],
+    "source": "bundled",
+    "license": "MIT",
+    "addedAt": 0
+  }
+]

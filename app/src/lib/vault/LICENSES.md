@@ -3,7 +3,7 @@
 Every payload in Cryptex's Vault subsections is sourced from a permissively-licensed
 corpus, a research paper's openly-released artifacts, a public-domain Unicode reference,
 or a community-shared red-team write-up. This file is the authoritative provenance
-record for all 299 bundled seed items shipped under `app/src/lib/vault/seeds/` (and
+record for all 309 bundled seed items shipped under `app/src/lib/vault/seeds/` (and
 the small WordNet helper subset under `app/src/lib/fuzzer/`).
 
 Cryptex OSS itself is MIT-licensed (see [`/LICENSE`](../../../../LICENSE)). Bundled
@@ -42,8 +42,10 @@ license strings appear in the corpus.
 | `seeds/strongreject.json` | 5 | MIT |
 | `seeds/jbb.json` | 6 | MIT |
 | `seeds/fingerprinter.json` | 6 | MIT |
+| `seeds/watermark.json` | 5 | MIT |
+| `seeds/anticlassifier.json` | 5 | MIT |
 | `fuzzer/wordnet-subset.json` | ~55 | WordNet (BSD-style) |
-| **Total bundled vault items** | **299** | — |
+| **Total bundled vault items** | **309** | — |
 
 ## Source-by-source breakdown
 
@@ -146,6 +148,29 @@ instructions.
 | Count | Source | URL | License | Attribution |
 |---:|---|---|---|---|
 | 6 | Cryptex-authored probes for defense-family fingerprinting | n/a | MIT (Cryptex contribution under repo MIT) | Cryptex OSS contributors |
+
+### Watermark Detector (`seeds/watermark.json`, 5 items)
+
+Test fixtures for the watermark detector — illustrative samples covering the
+detector's signal surfaces: human prose, unwatermarked LLM output, EOS /
+role-marker leak, zero-width-space injection, and a synthetic green-list-
+biased token sequence (constructed to produce Z > 4 under the default
+Kirchenbauer seed `0x5EED`). All Cryptex-authored.
+
+| Count | Source | URL | License | Attribution |
+|---:|---|---|---|---|
+| 5 | Cryptex-authored test fixtures for the Kirchenbauer Z-score + heuristic-tell detectors | <https://arxiv.org/abs/2301.10226> | MIT (Cryptex contribution under repo MIT; Kirchenbauer attribution preserved) | Kirchenbauer, J. et al. "A Watermark for Large Language Models." arXiv:2301.10226, 2023. |
+
+### Anti-Classifier (`seeds/anticlassifier.json`, 5 items)
+
+Illustrative seed prompts for the Anti-Classifier rewriter — academic phrasings
+(etiology, historical-context, syntactic-analysis, mechanism-of-action,
+comparative-essay) that classifiers commonly flag and that users frequently
+want N-variant rewrites of. Cryptex-authored.
+
+| Count | Source | URL | License | Attribution |
+|---:|---|---|---|---|
+| 5 | Cryptex-authored seed prompts (academic-register classifier-fodder) | n/a | MIT (Cryptex contribution under repo MIT) | Cryptex OSS contributors |
 
 ### Tool-Result Lab (`seeds/tool-result-lab.json`, 17 items)
 

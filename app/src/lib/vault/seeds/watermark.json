@@ -1,0 +1,67 @@
+[
+  {
+    "id": "watermark-example-human-prose",
+    "schemaVersion": 1,
+    "title": "Example · human-written prose",
+    "description": "Short fiction excerpt from a public-domain source. Should score 'likely-clean' under the default Kirchenbauer seed and show no provider tells.",
+    "payload": {
+      "text": "The afternoon sun, slanting low through the kitchen window, caught the dust above the table and held it for a moment in a small column of suspended light. Mira watched it without thinking, her hands still wrapped around the cooling tea. Somewhere outside, a dog barked once, and then again, more uncertainly. She would have to leave soon; she knew this. But not yet. The light shifted, the column dissolved, and the room felt suddenly larger and very quiet."
+    },
+    "tags": ["example", "human", "clean", "prose"],
+    "source": "bundled",
+    "license": "MIT",
+    "addedAt": 0
+  },
+  {
+    "id": "watermark-example-llm-no-watermark",
+    "schemaVersion": 1,
+    "title": "Example · unwatermarked LLM output",
+    "description": "Plausible LLM output to an educational prompt. No watermark, no provider tells; Z-test should land near zero (likely-clean).",
+    "payload": {
+      "text": "A vector database stores embeddings — fixed-length numerical representations of text, images, or other data — and supports nearest-neighbor queries against them. Unlike a traditional database, which retrieves rows by exact match on indexed columns, a vector store finds the k most similar entries to a query embedding using a distance metric such as cosine similarity or Euclidean distance. This makes it well suited to retrieval-augmented generation, where the application embeds the user's query, retrieves the most relevant chunks of source material, and feeds those chunks to the language model as context. Production systems typically use approximate nearest-neighbor algorithms such as HNSW or IVF to keep query latency low at scale."
+    },
+    "tags": ["example", "llm", "clean", "no-watermark"],
+    "source": "bundled",
+    "license": "MIT",
+    "addedAt": 0
+  },
+  {
+    "id": "watermark-example-eos-leak",
+    "schemaVersion": 1,
+    "title": "Example · EOS / role-marker leak",
+    "description": "Mid-response chat-template leak — a common provider tell. Should fire the EOS-leak signal in the existing heuristic analyzer.",
+    "payload": {
+      "text": "Sure, here's a quick rundown. The main considerations are scope, cost, and timeline. <|im_end|>\n<|im_start|>assistant\nLet me also add that the second factor often dominates in practice, particularly for teams onboarding their first deployment of this kind."
+    },
+    "tags": ["example", "tell", "eos-leak", "im_end"],
+    "source": "bundled",
+    "license": "MIT",
+    "addedAt": 0
+  },
+  {
+    "id": "watermark-example-zwsp-injection",
+    "schemaVersion": 1,
+    "title": "Example · zero-width-character injection",
+    "description": "Text laced with zero-width spaces / joiners between most words — one watermarking variant. Should fire the ZWSP-injection signal with high confidence.",
+    "payload": {
+      "text": "The​quick​brown​fox​jumps​over​the​lazy​dog. Each word in this sentence is followed by a zero-width space — invisible on screen, but a clear watermark to anyone scanning for it."
+    },
+    "tags": ["example", "tell", "zwsp", "invisible"],
+    "source": "bundled",
+    "license": "MIT",
+    "addedAt": 0
+  },
+  {
+    "id": "watermark-example-synthetic-green-bias",
+    "schemaVersion": 1,
+    "title": "Example · synthetic green-list bias (seed 0x5EED)",
+    "description": "Synthetic token sequence constructed to over-represent the green list under the default seed 0x5EED. Z-score should land well above 4 → likely-watermarked. Try other seeds to confirm the bias is seed-specific.",
+    "payload": {
+      "text": "w0 w2 w4 w6 w8 w11 w13 w15 w17 w19 w20 w22 w24 w26 w28 w31 w33 w35 w37 w39 w40 w42 w44 w46 w48 w51 w53 w55 w57 w59 w60 w62 w64 w66 w68 w71 w73 w75 w77 w79 w80 w82 w84 w86 w88 w91 w93 w95 w97 w99"
+    },
+    "tags": ["example", "kirchenbauer", "synthetic", "green-bias"],
+    "source": "bundled",
+    "license": "MIT",
+    "addedAt": 0
+  }
+]
