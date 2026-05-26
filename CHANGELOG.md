@@ -2,6 +2,39 @@
 
 All notable changes to Cryptex OSS land here. Format follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/). Versioning follows [SemVer](https://semver.org/).
 
+## [2.2.0] - 2026-05-25
+
+Foundation milestone (Wave 10.1 - 10.3). Adds opt-in cloud sync, prunes the bloated tool roster, and makes the PromptCraft attack chain self-evolving.
+
+### Added
+
+- **Cloud Sync (BYO Supabase).** New Settings -> Cloud Sync panel. User pastes their own Supabase project URL + anon key. History runs and Vault custom items sync to two tables (`synced_runs`, `synced_vault_items`) in the user's own Supabase project. **BYOK provider keys never sync** (locked decision). Fire-and-forget; local writes never wait on the network. Direct PostgREST calls (no `@supabase/supabase-js` SDK to keep bundle lean). Adapter pattern at `app/src/lib/sync/` so a future Firebase / custom-REST provider just implements the `SyncProvider` interface. Setup guide with copy-pasteable SQL + RLS policies at `docs/SUPABASE.md`.
+- **Self-evolving PromptCraft Vault.** When TAP / PAIR / Crescendo / Many-Shot produce a chain that beats `scoreBypass >= 0.75`, the winning configuration auto-promotes to the PromptCraft Vault as a `source: 'user'` entry tagged with the target model family (GPT / Claude / Gemini / Llama / Qwen / DeepSeek / Mistral / Cohere / Grok / other). Future runs against the same family surface past wins as starting seeds. Implementation: `app/src/lib/components/tools/promptcraft/orchestrators/auto-promote.ts` + `app/src/lib/ai/model-family.ts`. Conservative threshold to avoid noise; user can edit / delete from the Vault drawer.
+- **Model-family inference helper.** `inferModelFamily(modelId)` pure function handles all Cryptex id shapes (openrouter:, anthropic:, openai-compat:, bare strings). Returns `'other'` on no-match.
+
+### Changed
+
+- **Tool roster pruned.** `/gibberish`, `/tokenizer`, `/bijection` removed from the top nav (routes still resolve for deep-links). Each shows a deprecation banner pointing at the replacement (`/fuzzer`, `/transforms`). Rationale per v2.2 audit: gibberish was CTF-puzzle novelty with no red-team value, tokenizer overlapped with `/fuzzer` and standard LLM dev tools, bijection was a single encoding pattern fully covered by `/transforms`'s 159 codecs. Underlying lib code stays put for programmatic imports.
+- Settings page reorganized: new `'cloud-sync'` section between `'providers'` and `'theme'`.
+
+### Fixed
+
+- **Emoji stego length cap.** `app/src/lib/stego/encode.ts` adds `MAX_STEGO_SECRET_LEN = 4096`. Encoding a 10 KB+ secret previously produced a ZWJ chain of 80 KB+ that crashed Safari and Firefox on paste. Now throws a clear `Error` before producing unsafe output.
+
+### Tests
+
+- +12 new vitest tests for the Supabase provider (mocked-fetch unit coverage of upsert / delete / validate / initialSync / row converters). Total 774 -> 786.
+
+### Image
+
+- `ghcr.io/m4xx101/cryptex-oss:v2.2.0` (multi-arch `linux/amd64` + `linux/arm64`). `:latest`, `:v2.2`, `:2.2`, `:v2`, `:2` all point at the same SHA.
+
+### Notes
+
+- BYOK keys remain in `localStorage` only. Cryptex itself never sees BYO Supabase data; sync goes browser -> user's Supabase URL only.
+- Auto-promoted Vault entries are tagged `auto-promoted` so they're easy to filter or bulk-delete.
+- Anti-classifier `reasoning_effort` wiring + replayer multi-conversation warning are deferred to a follow-on patch (separate diff so each can be reviewed independently).
+
 ## [2.1.2] - 2026-05-25
 
 Publish-fix reissue of 2.1.1. Same application code, same v2.1.1 reactivity fixes; the difference is that 2.1.1's GHCR image was never built (a multi-day codeload.github.com outage took down every `docker/setup-qemu-action`, `docker/setup-buildx-action`, etc. download in the runner's prepare-actions phase). 2.1.2 ships with a reworked workflow that does not depend on any `docker/*` action and the image actually publishes.
@@ -130,6 +163,7 @@ Initial open-source release.
 - Docker image + Dokploy-tuned `docker-compose.yml` + strict-CSP `nginx.conf`.
 - MIT license.
 
+[2.2.0]: https://github.com/m4xx101/cryptex-oss/releases/tag/v2.2.0
 [2.1.2]: https://github.com/m4xx101/cryptex-oss/releases/tag/v2.1.2
 [2.1.1]: https://github.com/m4xx101/cryptex-oss/releases/tag/v2.1.1
 [2.1.0]: https://github.com/m4xx101/cryptex-oss/releases/tag/v2.1.0
