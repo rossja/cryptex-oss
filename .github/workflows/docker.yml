@@ -2,9 +2,15 @@ name: Docker build
 
 # Strategy: publish linux/amd64 unconditionally (the most common arch for
 # self-hosters on VPS), then attempt linux/arm64 as a best-effort multi-arch
-# manifest. If the QEMU action or arm64 build fails due to a transient
-# codeload.github.com hiccup, the workflow still leaves a working amd64
-# image at every tag. arm64 catches up on the next run.
+# manifest. If arm64 emulation cannot be installed, the workflow still
+# leaves a working amd64 image at every tag.
+#
+# QEMU setup uses tonistiigi/binfmt directly (a docker run) instead of the
+# docker/setup-qemu-action wrapper. The wrapper has hit transient
+# codeload.github.com download failures that cannot be tolerated with
+# step-level continue-on-error because action archives download before any
+# step runs. tonistiigi/binfmt comes from Docker Hub (separate CDN) so it
+# routes around codeload outages entirely.
 
 on:
   push:
@@ -37,15 +43,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # QEMU enables linux/arm64 cross-build on the amd64 runner. If the
-      # codeload download flakes (transient GitHub infra issue, no retry by
-      # default), we tolerate the failure and fall back to amd64-only below.
-      - name: Set up QEMU (multi-arch)
+      # QEMU enables linux/arm64 cross-build on the amd64 runner. We install
+      # via tonistiigi/binfmt direct from Docker Hub (the docker/setup-qemu-action
+      # wrapper has hit transient codeload.github.com 500s). If the binfmt
+      # install fails (e.g. Docker Hub rate-limit), the next "Resolve build
+      # platforms" step falls back to amd64-only.
+      - name: Install QEMU emulators (binfmt)
         id: qemu
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64
         continue-on-error: true
+        run: docker run --privileged --rm tonistiigi/binfmt:latest --install arm64
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
