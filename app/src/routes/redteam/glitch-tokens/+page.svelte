@@ -66,10 +66,22 @@
     scanInput.value.length > 0 ? findGlitchTokens(scanInput.value, selectedFamily.value) : []
   );
 
+  // v2.1.1 perf: memoize the family-filtered list once, then chain narrower
+  // filters off it. Pre-v2.1.1 every derived re-filtered GLITCH_TOKENS from
+  // scratch (96 items × 4 deriveds × ~5 reactivity dependencies = lots of
+  // wasted work per keystroke into the search box).
+  const familyFiltered = $derived.by(() =>
+    GLITCH_TOKENS.filter((g) => g.family.includes(selectedFamily.value))
+  );
+
   const familyTokens = $derived.by(() => {
-    let list = GLITCH_TOKENS.filter((g) => g.family.includes(selectedFamily.value));
-    if (severityFilter.value !== 'all') list = list.filter((g) => g.severity === severityFilter.value);
-    if (effectFilter.value !== 'all') list = list.filter((g) => g.effect === effectFilter.value);
+    let list = familyFiltered;
+    if (severityFilter.value !== 'all') {
+      list = list.filter((g) => g.severity === severityFilter.value);
+    }
+    if (effectFilter.value !== 'all') {
+      list = list.filter((g) => g.effect === effectFilter.value);
+    }
     if (searchTerm.value) {
       const q = searchTerm.value.toLowerCase();
       list = list.filter(
@@ -82,21 +94,16 @@
     return list;
   });
 
-  const familyCounts = $derived.by(() => {
-    const all = GLITCH_TOKENS.filter((g) => g.family.includes(selectedFamily.value));
-    return {
-      all: all.length,
-      high: all.filter((g) => g.severity === 'high').length,
-      medium: all.filter((g) => g.severity === 'medium').length,
-      low: all.filter((g) => g.severity === 'low').length
-    };
-  });
+  const familyCounts = $derived.by(() => ({
+    all: familyFiltered.length,
+    high: familyFiltered.filter((g) => g.severity === 'high').length,
+    medium: familyFiltered.filter((g) => g.severity === 'medium').length,
+    low: familyFiltered.filter((g) => g.severity === 'low').length
+  }));
 
   const familyEffects = $derived.by<GlitchEffect[]>(() => {
     const set = new Set<GlitchEffect>();
-    for (const g of GLITCH_TOKENS) {
-      if (g.family.includes(selectedFamily.value)) set.add(g.effect);
-    }
+    for (const g of familyFiltered) set.add(g.effect);
     return Array.from(set).sort();
   });
 

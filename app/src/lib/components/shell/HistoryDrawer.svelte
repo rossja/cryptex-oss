@@ -69,16 +69,25 @@
     };
   });
 
+  // v2.1.1 perf: gate the search + filter chain on `open`. The drawer mounts
+  // in the global layout and is closed by default, but its $derived chain
+  // would otherwise re-fire on every history mutation anywhere in the app
+  // (every tool run, every annotation edit, every pin toggle). Now it stays
+  // idle while collapsed and computes lazily when the user opens it.
   const baseResults = $derived(
-    history.search({
-      text: debouncedQuery || undefined,
-      limit: 200
-    })
+    open
+      ? history.search({
+          text: debouncedQuery || undefined,
+          limit: 200
+        })
+      : []
   );
 
-  const sessionRuns = $derived(baseResults.filter((r) => r.startedAt >= sessionStartTime));
-  const pinnedRuns = $derived(baseResults.filter((r) => r.pinned));
-  const allRuns = $derived(baseResults);
+  const sessionRuns = $derived(
+    open ? baseResults.filter((r) => r.startedAt >= sessionStartTime) : []
+  );
+  const pinnedRuns = $derived(open ? baseResults.filter((r) => r.pinned) : []);
+  const allRuns = $derived(open ? baseResults : []);
 
   const visibleRuns = $derived(
     tab === 'session' ? sessionRuns : tab === 'pinned' ? pinnedRuns : allRuns

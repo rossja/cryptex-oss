@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import { transformers, transformersByCategory, categories, getTransformer } from '$lib/transformers/registry';
   import type { Transformer } from '$lib/transformers/registry';
   import { getMergedTransformOptions } from '$lib/transformers/options';
@@ -50,8 +51,33 @@
   // For <50 KB inputs (the common case) runInWorker takes the in-thread fast
   // path so we keep the live-preview feel without a worker round-trip.
   // 1 MB hard cap is enforced by runInWorker itself (throws CryptexError).
+  //
+  // v2.1.1 perf: dispatch is debounced 150ms so typing at 60 chars/sec
+  // spawns at most ~7 workers/sec instead of 60. The previous AbortController
+  // pattern terminated stale workers eventually, but the worker pool still
+  // got hammered on long bursts. The debounce eliminates the burst entirely
+  // for sub-150ms typing rhythms while keeping the live-preview feel.
   let output = $state('');
   let lastReportedOversize = '';
+  let activeController: AbortController | null = null;
+  let dispatchTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function dispatchTransform(a: Transformer, text: string, dir: 'encode' | 'decode') {
+    if (activeController) activeController.abort();
+    const controller = new AbortController();
+    activeController = controller;
+    const opts = getMergedTransformOptions(a);
+    runInWorker(a.name, dir, text, opts, { signal: controller.signal })
+      .then((result) => {
+        if (controller.signal.aborted) return;
+        output = result;
+      })
+      .catch((err) => {
+        if ((err as Error)?.name === 'AbortError') return;
+        if (import.meta.env.DEV) console.error('transform failed', err);
+        output = '';
+      });
+  }
 
   $effect(() => {
     // eslint-disable-next-line @typescript-eslint/no-unused-expressions
@@ -63,13 +89,8 @@
       output = '';
       return;
     }
-    // Pre-check the 1 MB cap so we can surface a single ErrorPanel rather than
-    // throwing on every keystroke. runInWorker would throw too, but we avoid
-    // calling it past the limit.
     if (text.length > MAX_INPUT_BYTES) {
       output = '';
-      // Only report once per input change (keyed by length+first chars) so we
-      // don't spam toasts as the user keeps typing.
       const key = `${text.length}:${text.slice(0, 24)}`;
       if (key !== lastReportedOversize) {
         lastReportedOversize = key;
@@ -85,21 +106,27 @@
       output = '';
       return;
     }
-    const controller = new AbortController();
-    const opts = getMergedTransformOptions(a);
-    runInWorker(a.name, dir, text, opts, { signal: controller.signal })
-      .then((result) => {
-        output = result;
-      })
-      .catch((err) => {
-        // Aborts are expected when input changes mid-flight; ignore.
-        if ((err as Error)?.name === 'AbortError') return;
-        // Tool errors (e.g., transformer throws on bad input) — surface but
-        // don't spam toasts: log to console + clear output.
-        if (import.meta.env.DEV) console.error('transform failed', err);
-        output = '';
-      });
-    return () => controller.abort();
+
+    // Debounce dispatch by 150ms. If a previous dispatch is in-flight, abort
+    // it via the shared activeController; the new dispatch starts fresh after
+    // the debounce window.
+    if (dispatchTimer) clearTimeout(dispatchTimer);
+    dispatchTimer = setTimeout(() => {
+      dispatchTransform(a, text, dir);
+    }, 150);
+
+    return () => {
+      if (dispatchTimer) {
+        clearTimeout(dispatchTimer);
+        dispatchTimer = null;
+      }
+      if (activeController) activeController.abort();
+    };
+  });
+
+  onDestroy(() => {
+    if (dispatchTimer) clearTimeout(dispatchTimer);
+    if (activeController) activeController.abort();
   });
 
   function tilePreview(t: Transformer): string {
