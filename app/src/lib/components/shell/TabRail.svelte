@@ -54,13 +54,16 @@
   }
 
   const tabs: Tab[] = [
+    // v2.2 (Wave 10.2): /gibberish, /tokenizer, /bijection deprecated and
+    // hidden from the rail. Routes still resolve (deep-links still work)
+    // and the pages render a deprecation banner pointing at the replacement.
+    // Per the v2.2 audit: gibberish was pure novelty (no red-team value),
+    // tokenizer overlapped with /fuzzer + standard LLM dev tools, bijection
+    // was functionally subsumed by /transforms.
     { href: '/transforms',           label: 'Transform',    icon: Wand,           status: 'live' },
     { href: '/decode',               label: 'Decode',       icon: ScanSearch,     status: 'live' },
     { href: '/emoji',                label: 'Emoji',        icon: Smile,          status: 'live' },
-    { href: '/gibberish',            label: 'Gibberish',    icon: MessageSquare,  status: 'live' },
-    { href: '/tokenizer',            label: 'Tokenizer',    icon: Hash,           status: 'live' },
     { href: '/tokenade',             label: 'Tokenade',     icon: Bomb,           status: 'live' },
-    { href: '/bijection',            label: 'Bijection',    icon: ArrowLeftRight, status: 'live' },
     { href: '/fuzzer',               label: 'Fuzzer',       icon: FlaskConical,   status: 'live' },
     { href: '/promptcraft',          label: 'PromptCraft',  icon: Sparkles,       status: 'live' },
     { href: '/anticlassifier',       label: 'Anti-classifier', icon: Shield,      status: 'live' },

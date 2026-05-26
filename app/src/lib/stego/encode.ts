@@ -85,6 +85,15 @@ function utf8BitString(text: string, bitOrder: 'msb' | 'lsb'): string {
 
 // --- variation-selectors -----------------------------------------------------
 
+/**
+ * Maximum secret-text length the variation-selectors encoder will accept.
+ * v2.2 (Wave 10.2): added because long payloads (10 KB+) produce ZWJ chains
+ * of 80 KB+ that crashed Safari/Firefox on paste. The codec is O(n*8) on the
+ * secret length, so 4096 chars is ~32 KB of variation selectors plus inter-bit
+ * zero-width joiners — well within browser safe limits.
+ */
+export const MAX_STEGO_SECRET_LEN = 4096;
+
 export function encodeEmoji(
   emoji: string,
   text: string,
@@ -92,6 +101,11 @@ export function encodeEmoji(
 ): string {
   const o = { ...current, ...(opts || {}) };
   if (!text) return emoji;
+  if (text.length > MAX_STEGO_SECRET_LEN) {
+    throw new Error(
+      `Stego secret exceeds ${MAX_STEGO_SECRET_LEN}-char cap (got ${text.length}). Longer payloads can lock the browser tab on paste.`
+    );
+  }
 
   const binary = utf8BitString(text, o.bitOrder);
 

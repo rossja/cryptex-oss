@@ -110,6 +110,20 @@
   }
 </script>
 
+<!--
+  v2.2 (Wave 10.2): /gibberish is deprecated. The route still resolves so
+  old bookmarks don't 404, but it's hidden from the top nav. A deprecation
+  banner appears below; the underlying generators stay reachable via direct
+  imports from $lib/components/tools/gibberish/gibberish for anyone who
+  wired them programmatically.
+-->
+<div class="mx-auto mb-4 max-w-3xl rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-amber-200">
+  <strong>Deprecated in v2.2.</strong> Gibberish was a CTF-puzzle novelty with no
+  red-team use case. The page still works, but it's been removed from the top nav.
+  For character-level mutation in a real attack workflow, use
+  <a href="/fuzzer" class="text-primary hover:underline">/fuzzer</a> instead.
+</div>
+
 <ToolShell
   toolId="gibberish"
   title="Gibberish lab"
