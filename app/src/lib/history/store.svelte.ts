@@ -20,6 +20,7 @@ import type { ToolRun, HistoryQuery } from './types';
 import { Errors, isCryptexError } from '$lib/errors/types';
 import { errorLogger } from '$lib/errors/logger';
 import { isOverSoftQuota } from './quota';
+import { syncRunFireAndForget, deleteRunFireAndForget } from '$lib/sync/store.svelte';
 import { notify } from '$lib/stores/toast.svelte';
 
 const INDEX_KEY = 'cryptex.history.index.v2';
@@ -173,6 +174,11 @@ export async function record(init: RecordInput): Promise<ToolRun> {
   _runs = [run, ..._runs];
   saveIndex(_runs);
 
+  // Fire-and-forget cloud sync (no-op when disabled). Never blocks the
+  // local write path; failures degrade silently and surface via the
+  // SyncStatus chip in Settings.
+  syncRunFireAndForget(run);
+
   // Persist full payload to IDB if available
   if (await probeIdb()) {
     try {
@@ -293,6 +299,7 @@ export function pin(id: string): void {
   next[idx] = { ...cur, pinned: !cur.pinned };
   _runs = next;
   saveIndex(_runs);
+  syncRunFireAndForget(next[idx]);
 }
 
 export function annotate(id: string, text: string): void {
@@ -302,17 +309,24 @@ export function annotate(id: string, text: string): void {
   next[idx] = { ..._runs[idx], annotation: text || undefined };
   _runs = next;
   saveIndex(_runs);
+  syncRunFireAndForget(next[idx]);
 }
 
 export function clear(toolId?: string): void {
+  // Snapshot ids being deleted so we can fire cloud-deletes after local wipe.
+  const toDelete = toolId ? _runs.filter((r) => r.toolId === toolId).map((r) => r.id) : _runs.map((r) => r.id);
+
   if (!toolId) {
     _runs = [];
     saveIndex([]);
     if (browser) localStorage.removeItem(LS_FALLBACK_KEY);
-    return;
+  } else {
+    _runs = _runs.filter((r) => r.toolId !== toolId);
+    saveIndex(_runs);
   }
-  _runs = _runs.filter((r) => r.toolId !== toolId);
-  saveIndex(_runs);
+
+  // Fire-and-forget cloud-side delete for each removed id.
+  for (const id of toDelete) deleteRunFireAndForget(id);
 }
 
 export function exportJson(): string {

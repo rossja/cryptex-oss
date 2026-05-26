@@ -14,14 +14,17 @@
   import Database from 'lucide-svelte/icons/database';
   import Palette from 'lucide-svelte/icons/palette';
   import Sparkles from 'lucide-svelte/icons/sparkles';
+  import Cloud from 'lucide-svelte/icons/cloud';
   import ProvidersPanel from '$lib/components/settings/ProvidersPanel.svelte';
+  import CloudSyncPanel from '$lib/components/settings/CloudSyncPanel.svelte';
 
-  type SectionId = 'providers' | 'theme' | 'data';
+  type SectionId = 'providers' | 'cloud-sync' | 'theme' | 'data';
 
   const sections: Array<{ id: SectionId; label: string; icon: typeof KeyRound; visible: () => boolean }> = [
-    { id: 'providers', label: 'AI Providers', icon: KeyRound, visible: () => true },
-    { id: 'theme',     label: 'Appearance',  icon: Palette,  visible: () => true },
-    { id: 'data',      label: 'Local Data',  icon: Database, visible: () => true }
+    { id: 'providers',  label: 'AI Providers', icon: KeyRound, visible: () => true },
+    { id: 'cloud-sync', label: 'Cloud Sync',   icon: Cloud,    visible: () => true },
+    { id: 'theme',      label: 'Appearance',   icon: Palette,  visible: () => true },
+    { id: 'data',       label: 'Local Data',   icon: Database, visible: () => true }
   ];
 
   const visibleSections = $derived(sections.filter((s) => s.visible()));
@@ -139,6 +142,8 @@
     <div class="min-w-0 space-y-6">
       {#if active === 'providers'}
         <ProvidersPanel />
+      {:else if active === 'cloud-sync'}
+        <CloudSyncPanel />
       {:else if active === 'theme'}
         <div class="space-y-3 rounded-xl border border-border bg-card/60 p-5 shadow-glass">
           <div class="flex items-center gap-2">

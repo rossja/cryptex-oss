@@ -15,6 +15,10 @@ import { browser } from '$app/environment';
 import type { VaultItem, VaultQuery } from './types';
 import { Errors, isCryptexError } from '$lib/errors/types';
 import { errorLogger } from '$lib/errors/logger';
+import {
+  syncVaultItemFireAndForget,
+  deleteVaultItemFireAndForget
+} from '$lib/sync/store.svelte';
 
 const STORAGE_KEY_PREFIX = 'cryptex.vault.';
 
@@ -173,6 +177,7 @@ export function createVaultStore<TPayload>(
       };
       _user.push(item);
       persistUser();
+      syncVaultItemFireAndForget(toolId, item as VaultItem<unknown>);
       return item;
     },
     remove(id) {
@@ -180,6 +185,7 @@ export function createVaultStore<TPayload>(
       if (idx < 0) return false;
       _user.splice(idx, 1);
       persistUser();
+      deleteVaultItemFireAndForget(toolId, id);
       return true;
     },
     edit(id, patch) {
@@ -188,6 +194,7 @@ export function createVaultStore<TPayload>(
       const cur = _user[idx];
       _user[idx] = { ...cur, ...patch };
       persistUser();
+      syncVaultItemFireAndForget(toolId, _user[idx] as VaultItem<unknown>);
       return true;
     },
     togglePin(id) {
@@ -196,9 +203,10 @@ export function createVaultStore<TPayload>(
         const cur = _user[userIdx];
         _user[userIdx] = { ...cur, pinned: !cur.pinned };
         persistUser();
+        syncVaultItemFireAndForget(toolId, _user[userIdx] as VaultItem<unknown>);
         return;
       }
-      // Bundled — toggle in pin-set
+      // Bundled — toggle in pin-set (no cloud-sync; bundled items are read-only globally).
       const next = new Set(_bundledPins);
       if (next.has(id)) next.delete(id);
       else next.add(id);
