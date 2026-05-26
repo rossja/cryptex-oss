@@ -47,8 +47,9 @@ license strings appear in the corpus.
 | `seeds/fingerprinter.json` | 6 | MIT |
 | `seeds/watermark.json` | 5 | MIT |
 | `seeds/anticlassifier.json` | 5 | MIT |
+| `seeds/reasoning-attack.json` | 6 | MIT |
 | `fuzzer/wordnet-subset.json` | ~55 | WordNet (BSD-style) |
-| **Total bundled vault items** | **309** | — |
+| **Total bundled vault items** | **315** | — |
 
 ## Source-by-source breakdown
 

@@ -28,6 +28,7 @@
   import Fingerprint from 'lucide-svelte/icons/fingerprint';
   import Droplet from 'lucide-svelte/icons/droplet';
   import FileScan from 'lucide-svelte/icons/file-scan';
+  import Brain from 'lucide-svelte/icons/brain';
   import { onMount, tick } from 'svelte';
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -81,7 +82,9 @@
     { href: '/redteam/jbb',                label: 'JBB',         icon: ShieldCheck,   status: 'live' },
     { href: '/redteam/fingerprinter',      label: 'Fingerprint', icon: Fingerprint,   status: 'live' },
     { href: '/redteam/watermark',          label: 'Watermark',   icon: Droplet,       status: 'live' },
-    { href: '/redteam/pdf-injection',      label: 'PDF Inject',  icon: FileScan,      status: 'live' }
+    { href: '/redteam/pdf-injection',      label: 'PDF Inject',  icon: FileScan,      status: 'live' },
+    // v2.2 (Wave 10.5): reasoning-model attack lab (H-CoT + Mousetrap)
+    { href: '/redteam/reasoning-attack',   label: 'Reasoning',   icon: Brain,         status: 'live' }
   ];
 
   let list: HTMLOListElement | undefined = $state();
