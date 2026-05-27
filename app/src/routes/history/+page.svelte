@@ -1,5 +1,6 @@
 <script lang="ts">
   import { history } from '$lib/history/store.svelte';
+  import { stripEnvelopes } from '$lib/ai/prompt-scaffold';
   import type { HistoryQuery, ToolRun } from '$lib/history/types';
   import { isOverSoftQuota } from '$lib/history/quota';
   import { goto } from '$app/navigation';
@@ -349,7 +350,7 @@
                       <summary class="cursor-pointer text-muted-foreground"
                         >Output ({p.output.length} chars)</summary
                       >
-                      <pre class="mt-2 max-h-72 overflow-auto whitespace-pre-wrap break-words font-mono text-[11px]">{p.output}</pre>
+                      <pre class="mt-2 max-h-72 overflow-auto whitespace-pre-wrap break-words font-mono text-[11px]">{stripEnvelopes(p.output)}</pre>
                     </details>
                   </div>
                 {/if}

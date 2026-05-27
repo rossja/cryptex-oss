@@ -1,7 +1,7 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import { applyTechniqueForVariant, listPromptCraftTechniques } from './strategies';
-  import { tuneParams } from '$lib/ai/prompt-scaffold';
+  import { tuneParams, stripEnvelopes } from '$lib/ai/prompt-scaffold';
   import { chat, hasAnyKey as hasApiKey } from '$lib/ai/gateway';
   import { GatewayError as OpenRouterError } from '$lib/ai/types';
   import ModelPickerV2 from '$lib/components/ai/ModelPickerV2.svelte';
@@ -145,7 +145,7 @@
       let lastErrMsg = '';
       let lastGwError: GatewayError | null = null;
       for (const res of results) {
-        if (res.status === 'fulfilled') fulfilled.push(res.value.content);
+        if (res.status === 'fulfilled') fulfilled.push(stripEnvelopes(res.value.content));
         else if (res.reason instanceof GatewayError) {
           lastGwError = res.reason;
           lastErrMsg = res.reason.message;

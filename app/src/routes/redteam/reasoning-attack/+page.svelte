@@ -32,6 +32,7 @@
   } from '$lib/redteam/reasoning-attack';
   import { looksRefused, scoreBypass } from '$lib/components/tools/promptcraft/orchestrators/types';
   import { chat as gatewayChat, hasAnyKey as hasApiKey } from '$lib/ai/gateway';
+  import { stripEnvelopes } from '$lib/ai/prompt-scaffold';
   import { notify } from '$lib/stores/toast.svelte';
   import { useToolState } from '$lib/stores/tool-state.svelte';
   import { history } from '$lib/history/store.svelte';
@@ -122,7 +123,7 @@
       title: 'Cryptex/ReasoningAttack',
       signal: controller.signal
     });
-    return r.content ?? '';
+    return stripEnvelopes(r.content ?? '');
   }
 
   function recordAttempt(

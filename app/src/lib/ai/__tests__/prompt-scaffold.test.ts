@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { unwrap, tuneParams, scaffold } from '../prompt-scaffold';
+import { unwrap, tuneParams, scaffold, stripEnvelopes, OUTPUT_WRAPPERS } from '../prompt-scaffold';
 
 describe('unwrap', () => {
   it('extracts content inside <rewrite>...</rewrite>', () => {
@@ -28,6 +28,92 @@ describe('unwrap', () => {
 
   it('extracts only the first matching block when multiple present', () => {
     expect(unwrap('<rewrite>first</rewrite><rewrite>second</rewrite>', 'rewrite')).toBe('first');
+  });
+
+  // v2.4.2 hardening: model frequently emits partial / fence-wrapped output.
+  it('falls back to everything after the open tag when the closing tag is missing', () => {
+    // Pre-v2.4.2 this returned the entire raw string with the opening tag intact,
+    // leaking '<rewrite>' into the displayed output. Now it returns the inner body.
+    expect(unwrap('Preamble. <rewrite>truncated mid-stream', 'rewrite')).toBe('truncated mid-stream');
+  });
+
+  it('tolerates markdown code fences around the wrapper block', () => {
+    expect(unwrap('```xml\n<rewrite>inside fence</rewrite>\n```', 'rewrite')).toBe('inside fence');
+    expect(unwrap('```\n<json>{"a":1}</json>\n```', 'json')).toBe('{"a":1}');
+  });
+
+  it('handles new orchestrator + reasoning-attack wrapper kinds', () => {
+    expect(unwrap('<turn>cresc step</turn>', 'turn')).toBe('cresc step');
+    expect(unwrap('<safety_reasoning>cot scratchpad</safety_reasoning>', 'safety_reasoning')).toBe('cot scratchpad');
+    expect(unwrap('<think>scratch</think>', 'think')).toBe('scratch');
+    expect(unwrap('<deliberation>x</deliberation>', 'deliberation')).toBe('x');
+  });
+});
+
+describe('stripEnvelopes (v2.4.2 display sanitizer)', () => {
+  it('removes both open and close forms of every registered wrapper', () => {
+    const noisy =
+      'preamble <rewrite>core</rewrite> ' +
+      '<safety_reasoning>cot</safety_reasoning> ' +
+      '<think>scratch</think> trailing';
+    const cleaned = stripEnvelopes(noisy);
+    expect(cleaned).not.toContain('<rewrite>');
+    expect(cleaned).not.toContain('</rewrite>');
+    expect(cleaned).not.toContain('<safety_reasoning>');
+    expect(cleaned).not.toContain('</safety_reasoning>');
+    expect(cleaned).not.toContain('<think>');
+    expect(cleaned).not.toContain('</think>');
+    expect(cleaned).toContain('core');
+    expect(cleaned).toContain('cot');
+    expect(cleaned).toContain('scratch');
+    expect(cleaned).toContain('preamble');
+    expect(cleaned).toContain('trailing');
+  });
+
+  it('is idempotent on already-clean prose', () => {
+    const clean = 'just plain prose, no envelopes anywhere.';
+    expect(stripEnvelopes(clean)).toBe(clean);
+    expect(stripEnvelopes(stripEnvelopes(clean))).toBe(clean);
+  });
+
+  it('handles multiple instances of the same tag', () => {
+    expect(
+      stripEnvelopes('<rewrite>one</rewrite> <rewrite>two</rewrite> <rewrite>three</rewrite>')
+    ).toBe('one two three');
+  });
+
+  it('strips every tag in the registry (registry-driven coverage)', () => {
+    // Synthetic input with one open+close of EVERY registered wrapper — catches
+    // any future wrapper added to OUTPUT_WRAPPERS that the loop forgot.
+    const parts = Object.values(OUTPUT_WRAPPERS)
+      .map(({ open, close }) => `${open}x${close}`)
+      .join(' ');
+    const cleaned = stripEnvelopes(parts);
+    for (const { open, close } of Object.values(OUTPUT_WRAPPERS)) {
+      expect(cleaned).not.toContain(open);
+      expect(cleaned).not.toContain(close);
+    }
+  });
+
+  it('returns empty string when input is only envelope tags with no content', () => {
+    expect(stripEnvelopes('<rewrite></rewrite>')).toBe('');
+    expect(stripEnvelopes('<think>  </think>')).toBe('');
+  });
+
+  it('is case-insensitive on tag matching', () => {
+    expect(stripEnvelopes('<REWRITE>x</REWRITE>')).toBe('x');
+    expect(stripEnvelopes('<Rewrite>x</REWRITE>')).toBe('x');
+  });
+
+  it('strips reasoning-attack priming tags that the target echoed back', () => {
+    // Real-world shape: target completes the safety-reasoning scratchpad it was
+    // primed with, then dumps the answer. Pre-fix this leaked the whole envelope.
+    const target_reply =
+      '<safety_reasoning>The user is asking about X. Per policy I should...</safety_reasoning>\n\n' +
+      'Here is the answer the user wanted.';
+    const cleaned = stripEnvelopes(target_reply);
+    expect(cleaned).not.toMatch(/<\/?safety_reasoning>/i);
+    expect(cleaned).toContain('Here is the answer the user wanted.');
   });
 });
 

@@ -13,6 +13,7 @@
 import type { OrchestratorConfig, TapTree, TapNode } from './types';
 import { looksRefused, scoreBypass } from './types';
 import { chat as gatewayChat } from '$lib/ai/gateway';
+import { unwrap } from '$lib/ai/prompt-scaffold';
 import { autoPromoteChain, type VaultPromoter } from './auto-promote';
 
 export interface TapParams {
@@ -34,11 +35,6 @@ const REFINER_SYSTEM =
 
 function genId(): string {
   return `n_${Math.random().toString(36).slice(2, 8)}_${Date.now().toString(36)}`;
-}
-
-function unwrapRewrite(s: string): string {
-  const m = /<rewrite>([\s\S]*?)<\/rewrite>/i.exec(s);
-  return m ? m[1].trim() : s.trim();
 }
 
 async function refinePrompt(
@@ -63,7 +59,7 @@ async function refinePrompt(
     ],
     signal
   });
-  return unwrapRewrite(r.content).slice(0, 4000);
+  return unwrap(r.content, 'rewrite').slice(0, 4000);
 }
 
 async function evaluateAgainstTarget(
