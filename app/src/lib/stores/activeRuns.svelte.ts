@@ -34,6 +34,65 @@ export interface ActiveRun<TData = unknown> {
   error?: string;
 }
 
+/**
+ * localStorage key for the small "what was running when the page died"
+ * snapshot. Surfaced via `readOrphanedToolIds()` so the layout can emit
+ * a one-shot info toast after a reload. Distinct from the in-memory
+ * registry; never injected back into _runs (the Promise died with the
+ * page; we can't resume it).
+ */
+const SNAPSHOT_KEY = 'cryptex.activeRuns.snapshot';
+
+function readSnapshotIds(): string[] {
+  if (typeof localStorage === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(SNAPSHOT_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr.filter((x): x is string => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeSnapshotIds(ids: string[]): void {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    if (ids.length === 0) localStorage.removeItem(SNAPSHOT_KEY);
+    else localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(ids));
+  } catch {
+    /* quota / private mode — silently swallow */
+  }
+}
+
+function addToSnapshot(toolId: string): void {
+  const set = new Set(readSnapshotIds());
+  set.add(toolId);
+  writeSnapshotIds([...set]);
+}
+
+function removeFromSnapshot(toolId: string): void {
+  const set = new Set(readSnapshotIds());
+  set.delete(toolId);
+  writeSnapshotIds([...set]);
+}
+
+/**
+ * One-shot reader for post-reload UX. Called by the root layout on
+ * mount: any toolId in the returned list was running when the previous
+ * page died (closed tab, hard reload, browser crash). After reading, the
+ * caller should clear the snapshot via `clearOrphanedSnapshot()` — the
+ * Promise can't be resumed, so the entry is informational only.
+ */
+export function readOrphanedToolIds(): string[] {
+  return readSnapshotIds();
+}
+
+/** Clear the orphan snapshot. Call after `readOrphanedToolIds()`. */
+export function clearOrphanedSnapshot(): void {
+  writeSnapshotIds([]);
+}
+
 class ActiveRunsRegistry {
   private _runs = $state<Map<string, ActiveRun>>(new Map());
 
@@ -84,6 +143,7 @@ class ActiveRunsRegistry {
     };
     this._runs.set(toolId, run as ActiveRun);
     this._runs = new Map(this._runs); // trigger Svelte reactivity
+    addToSnapshot(toolId);
     return run;
   }
 
@@ -110,6 +170,7 @@ class ActiveRunsRegistry {
     run.updatedAt = Date.now();
     if (summary !== undefined) run.summary = summary;
     this._runs = new Map(this._runs);
+    removeFromSnapshot(toolId);
   }
 
   /** Mark a run as failed. */
@@ -121,6 +182,7 @@ class ActiveRunsRegistry {
     run.updatedAt = Date.now();
     run.error = error;
     this._runs = new Map(this._runs);
+    removeFromSnapshot(toolId);
   }
 
   /**
@@ -140,12 +202,14 @@ class ActiveRunsRegistry {
     run.finishedAt = Date.now();
     run.updatedAt = Date.now();
     this._runs = new Map(this._runs);
+    removeFromSnapshot(toolId);
   }
 
   /** Drop a run from the registry entirely (e.g., when user dismisses results). */
   clear(toolId: string): void {
     this._runs.delete(toolId);
     this._runs = new Map(this._runs);
+    removeFromSnapshot(toolId);
   }
 }
 

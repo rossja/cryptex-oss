@@ -102,7 +102,11 @@ jobs:
             TAGS+=("${IMG}:v${MAJOR}")        ; TAGS+=("${IMG}:${MAJOR}")
             TAGS+=("${IMG}:latest")
           elif [[ "$GITHUB_REF" == refs/heads/main || "$GITHUB_REF" == refs/heads/master ]]; then
-            TAGS+=("${IMG}:latest")
+            # Main pushes get :main + :sha-<short>; NEVER :latest. The :latest
+            # tag should always equal the most recent semver tag, never the
+            # bleeding-edge branch HEAD. Pre-v2.5.0 this also tagged :latest
+            # here, which created a race where a docs-only push to main after
+            # a release cut would overwrite :latest with main's older code.
             TAGS+=("${IMG}:main")
           else
             BRANCH="${GITHUB_REF#refs/heads/}"
@@ -186,6 +190,37 @@ jobs:
           curl -s -o /dev/null -w "%{http_code}  /settings/\n"    http://localhost:8080/settings/
           docker logs cryptex-ci | tail -20
           docker stop cryptex-ci && docker rm cryptex-ci
+
+      - name: Extract CHANGELOG section for this release
+        if: startsWith(github.ref, 'refs/tags/v') && github.event_name != 'pull_request'
+        id: changelog
+        run: |
+          VER="${GITHUB_REF#refs/tags/v}"
+          # Extract the [X.Y.Z] section: from `## [X.Y.Z]` until the next `## ` heading (exclusive).
+          awk -v ver="$VER" '
+            $0 ~ "^## \\[" ver "\\]" { capture = 1; next }
+            capture && /^## / { exit }
+            capture { print }
+          ' CHANGELOG.md > RELEASE_NOTES.md
+          if [ ! -s RELEASE_NOTES.md ]; then
+            echo "No CHANGELOG entry for $VER; falling back to auto-generated notes." >&2
+            echo "_See [CHANGELOG.md](https://github.com/m4xx101/cryptex-oss/blob/main/CHANGELOG.md) for full release notes._" > RELEASE_NOTES.md
+          fi
+          echo "Release notes preview:"
+          head -40 RELEASE_NOTES.md
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v') && github.event_name != 'pull_request'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body_path: RELEASE_NOTES.md
+          generate_release_notes: false
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish summary
         if: always()

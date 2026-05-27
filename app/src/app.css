@@ -159,3 +159,16 @@
     }
   }
 }
+
+/* Safe-area utilities for iPhone notch + Android nav bar.
+ *
+ * Apply .pt-safe to the top of fixed/sticky headers and .pb-safe to
+ * footers so content respects the device's insets (`viewport-fit=cover`
+ * is set in app.html). Falls back to `0` when no inset is reported.
+ */
+@layer utilities {
+  .pt-safe { padding-top: env(safe-area-inset-top, 0); }
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0); }
+  .pl-safe { padding-left: env(safe-area-inset-left, 0); }
+  .pr-safe { padding-right: env(safe-area-inset-right, 0); }
+}

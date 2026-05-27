@@ -7,9 +7,13 @@
   import TabRail from '$lib/components/shell/TabRail.svelte';
   import ToastHost from '$lib/components/shell/ToastHost.svelte';
   import HistoryDrawer from '$lib/components/shell/HistoryDrawer.svelte';
+  import UpdateBanner from '$lib/components/shell/UpdateBanner.svelte';
   import { apply as applyTheme, watchSystemTheme } from '$lib/stores/theme.svelte';
   import { runLegacyMigration } from '$lib/stores/_migrate';
   import { initCatalogStore } from '$lib/ai/catalog.svelte';
+  import { APP_VERSION, APP_CHANGELOG_URL } from '$lib/config/version';
+  import { readOrphanedToolIds, clearOrphanedSnapshot } from '$lib/stores/activeRuns.svelte';
+  import { notify } from '$lib/stores/toast.svelte';
 
   let { children } = $props();
   let historyOpen = $state(false);
@@ -37,6 +41,19 @@
     runLegacyMigration();
     applyTheme();
     initCatalogStore();
+
+    // One-shot orphan notice: if the last session had any active runs in
+    // flight when the page died (closed tab, hard reload, crash), surface
+    // an info toast so the user knows. The Promise can't be resumed, but
+    // the user's form state IS persisted via useToolState, so they can
+    // re-run from the same inputs.
+    const orphans = readOrphanedToolIds();
+    if (orphans.length > 0) {
+      const label = orphans.length === 1 ? '1 run was' : `${orphans.length} runs were`;
+      notify.info(`${label} interrupted by your last page reload. Your input is still on each tool.`);
+      clearOrphanedSnapshot();
+    }
+
     return watchSystemTheme();
   });
 </script>
@@ -57,6 +74,7 @@
     ></div>
   </div>
 
+  <UpdateBanner />
   <HeaderBar onopenHistory={() => (historyOpen = true)} />
 
   <main class="container pt-6 pb-20">
@@ -68,12 +86,21 @@
     </div>
   </main>
 
-  <footer class="container py-6 text-xs text-muted-foreground">
+  <footer class="container pb-safe py-6 text-xs text-muted-foreground">
     <div class="flex flex-wrap items-center justify-between gap-3 border-t border-border/60 pt-4">
       <span class="font-mono text-[11px] tracking-wide">
         © {new Date().getFullYear()} Cryptex
       </span>
       <nav aria-label="Footer" class="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px] tracking-wide">
+        <a
+          href={APP_CHANGELOG_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="rounded-md border border-border/60 px-1.5 py-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          title="View changelog"
+        >
+          v{APP_VERSION}
+        </a>
         <a href={base + '/privacy/'} class="transition-colors hover:text-foreground">Privacy</a>
         <a href={base + '/terms/'} class="transition-colors hover:text-foreground">Terms</a>
         <a href={base + '/about/'} class="transition-colors hover:text-foreground">About</a>

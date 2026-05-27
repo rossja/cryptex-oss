@@ -25,6 +25,7 @@
   import Globe from 'lucide-svelte/icons/globe';
   import Layers from 'lucide-svelte/icons/layers';
   import ArrowLeftRight from 'lucide-svelte/icons/arrow-left-right';
+  import { APP_VERSION, APP_CHANGELOG_URL, APP_RELEASES_URL } from '$lib/config/version';
 
   const mutatorCount = mutatorTechniques().length;
   const classifierCount = classifierTechniques().length;
@@ -265,7 +266,15 @@
     <p class="font-serif text-[13px] italic text-muted-foreground">
       Vibecoded with stubborn hands and a strong cup of coffee. ☕
     </p>
-    <p class="mt-1 text-[11px] text-muted-foreground/60">
+    <p class="mt-3 inline-flex flex-wrap items-center justify-center gap-2 text-[11px] text-muted-foreground/80">
+      Running
+      <span class="rounded-md border border-border/60 bg-background/60 px-1.5 py-0.5 font-mono text-foreground">v{APP_VERSION}</span>
+      <span class="text-muted-foreground/50">·</span>
+      <a class="text-primary hover:underline" href={APP_CHANGELOG_URL} target="_blank" rel="noopener noreferrer">View changelog</a>
+      <span class="text-muted-foreground/50">·</span>
+      <a class="text-primary hover:underline" href={APP_RELEASES_URL} target="_blank" rel="noopener noreferrer">All releases</a>
+    </p>
+    <p class="mt-2 text-[11px] text-muted-foreground/60">
       © {new Date().getFullYear()} Cryptex
     </p>
   </section>

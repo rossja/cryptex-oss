@@ -18,7 +18,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT"></a>
-  <a href="https://github.com/m4xx101/cryptex-oss/releases/tag/v2.3.0"><img src="https://img.shields.io/badge/release-v2.3.0-9b59b6.svg" alt="v2.3.0"></a>
+  <a href="https://github.com/m4xx101/cryptex-oss/releases/latest"><img src="https://img.shields.io/github/v/release/m4xx101/cryptex-oss?label=release&color=9b59b6" alt="latest release"></a>
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-keep--a--changelog-orange.svg" alt="Changelog"></a>
   <a href="https://github.com/m4xx101/cryptex-oss/pkgs/container/cryptex-oss"><img src="https://img.shields.io/badge/ghcr-cryptex--oss-2496ed.svg?logo=docker&logoColor=white" alt="GHCR image"></a>
   <a href="https://github.com/m4xx101/cryptex-oss/actions/workflows/docker.yml"><img src="https://github.com/m4xx101/cryptex-oss/actions/workflows/docker.yml/badge.svg" alt="Docker build"></a>

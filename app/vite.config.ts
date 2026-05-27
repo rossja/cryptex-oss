@@ -2,9 +2,23 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import { svelteTesting } from '@testing-library/svelte/vite';
 import { defineConfig } from 'vitest/config';
 import path from 'node:path';
+import fs from 'node:fs';
+
+// Read the root package.json at build time and bake the version + repo
+// into the bundle as global compile-time constants. Avoids the JSON
+// import-assertions syntax churn (`with`/`assert`) across Node versions.
+const pkg = JSON.parse(
+  fs.readFileSync(path.resolve(__dirname, '../package.json'), 'utf8')
+);
 
 export default defineConfig({
   plugins: [sveltekit(), svelteTesting()],
+  // Compile-time constants for the running app: version + repo slug.
+  // Consumed by app/src/lib/config/version.ts.
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+    __APP_REPO__: JSON.stringify('m4xx101/cryptex-oss')
+  },
   // Expose both VITE_* and PUBLIC_* env vars to client code via
   // `import.meta.env`. Default Vite envPrefix is `VITE_` only; without this
   // override, every `import.meta.env.PUBLIC_*` reference resolves to
@@ -12,8 +26,7 @@ export default defineConfig({
   envPrefix: ['VITE_', 'PUBLIC_'],
   resolve: {
     alias: {
-      $transformers: path.resolve(__dirname, '../src/transformers'),
-      $legacy: path.resolve(__dirname, '../js')
+      $transformers: path.resolve(__dirname, '../src/transformers')
     }
   },
   server: {

@@ -17,6 +17,11 @@
   import Cloud from 'lucide-svelte/icons/cloud';
   import ProvidersPanel from '$lib/components/settings/ProvidersPanel.svelte';
   import CloudSyncPanel from '$lib/components/settings/CloudSyncPanel.svelte';
+  import { createPersistedState } from '$lib/stores/_persisted.svelte';
+  import { APP_VERSION } from '$lib/config/version';
+  import { clearUpdateCheckCache } from '$lib/release/update-check';
+
+  const updateCheckEnabled = createPersistedState<boolean>('cryptex.updateCheck.enabled', true);
 
   type SectionId = 'providers' | 'cloud-sync' | 'theme' | 'data';
 
@@ -117,8 +122,8 @@
                 type="button"
                 onclick={() => setActive(s.id)}
                 class={active === s.id
-                  ? 'flex w-full items-center gap-2 rounded-lg bg-primary/15 px-3 py-2 text-sm font-medium text-primary'
-                  : 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground'}
+                  ? 'flex min-h-11 w-full items-center gap-2 rounded-lg bg-primary/15 px-3 py-2 text-sm font-medium text-primary sm:min-h-9'
+                  : 'flex min-h-11 w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:min-h-9'}
                 aria-current={active === s.id ? 'page' : undefined}
               >
                 <s.icon size={14} />
@@ -223,6 +228,36 @@
                 <Trash2 size={12} /> Clear
               </button>
             </div>
+          </div>
+
+          <div class="mt-4 space-y-2">
+            <div class="flex items-center gap-2">
+              <Sparkles size={14} class="text-primary" />
+              <h3 class="font-serif text-sm">Release notifications</h3>
+            </div>
+            <p class="text-xs text-muted-foreground">
+              Running <strong class="text-foreground">v{APP_VERSION}</strong>. Cryptex can check
+              <a class="text-primary hover:underline" href="https://github.com/m4xx101/cryptex-oss/releases" target="_blank" rel="noreferrer noopener">GitHub Releases</a>
+              on launch to let you know when a newer self-host image is available.
+            </p>
+            <label class="flex cursor-pointer items-center gap-2 rounded-md border border-border/60 bg-background/40 p-3 text-sm">
+              <input
+                type="checkbox"
+                bind:checked={updateCheckEnabled.value}
+                class="h-4 w-4 accent-primary"
+              />
+              <span class="flex-1">
+                <span class="font-medium">Check for updates on launch</span>
+                <span class="block text-xs text-muted-foreground">One outbound GET to <code class="rounded bg-muted/40 px-1">api.github.com</code> per session, cached 6 hours. No tracking; turn off to disable.</span>
+              </span>
+              <button
+                type="button"
+                onclick={() => { clearUpdateCheckCache(); notify.success('Update-check cache cleared.'); }}
+                class="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-card/40 px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                Re-check now
+              </button>
+            </label>
           </div>
         </div>
       {/if}
