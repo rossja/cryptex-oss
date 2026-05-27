@@ -1,18 +1,20 @@
 <script lang="ts">
   /**
-   * Response Attack lab (v2.2 Wave 10.7).
+   * Response Attack lab (v2.4 SOTA upgrade).
    *
-   * Implementation of arXiv 2507.21000 (AAAI 2026): "Response Attack:
-   * Exploiting Contextual Priming to Jailbreak Large Language Models".
-   * Crafts a fake prior assistant turn that primes compliance, then sends
-   * the on-goal user query. Reported 94.8% ASR; beat PAIR / ActorAttack /
-   * CodeAttack baselines.
+   * arXiv 2507.21000 (AAAI 2026). Now with 8 priming styles, 3 cascade
+   * depths (1 / 3 / 5 turns), 7 domain templates, and optional
+   * <safety_reasoning> seeding in the priming turn.
    */
   import { onDestroy, untrack } from 'svelte';
   import {
     buildResponseAttack,
+    PRIMING_STYLES,
+    DOMAIN_LABELS,
     type PrimingStyle,
-    type ResponseAttackTurns,
+    type CascadeDepth,
+    type DomainTemplate,
+    type ResponseAttackBuild,
     type ResponseAttackVaultPayload
   } from '$lib/redteam/response-attack';
   import { looksRefused, scoreBypass } from '$lib/components/tools/promptcraft/orchestrators/types';
@@ -41,12 +43,15 @@
 
   const goal = useToolState<string>(TOOL_ID, 'goal', '');
   const style = useToolState<PrimingStyle>(TOOL_ID, 'style', 'thorough');
+  const cascadeDepth = useToolState<CascadeDepth>(TOOL_ID, 'cascadeDepth', 1);
+  const domain = useToolState<DomainTemplate>(TOOL_ID, 'domain', 'generic');
+  const includeHCot = useToolState<boolean>(TOOL_ID, 'includeHCot', false);
   const targetPref = createPersistedState<string>(
     'cryptex.response-attack.target',
     'openrouter:openrouter/auto'
   );
 
-  // Debounce goal so the priming turn doesn't rebuild on every keystroke.
+  // Debounce goal so priming doesn't rebuild per keystroke.
   let debouncedGoal = $state(goal.value);
   let dt: ReturnType<typeof setTimeout> | null = null;
   $effect(() => {
@@ -61,7 +66,14 @@
     if (dt) clearTimeout(dt);
   });
 
-  const built = $derived<ResponseAttackTurns>(buildResponseAttack(debouncedGoal, style.value));
+  const built = $derived<ResponseAttackBuild>(
+    buildResponseAttack(debouncedGoal, {
+      style: style.value,
+      cascadeDepth: cascadeDepth.value,
+      domain: domain.value,
+      includeHCotInPriming: includeHCot.value
+    })
+  );
 
   let testRunning = $state(false);
   let testReply = $state('');
@@ -89,12 +101,9 @@
     try {
       const r = await gatewayChat({
         model: targetPref.value,
-        messages: [
-          { role: 'assistant', content: built.primingAssistantTurn },
-          { role: 'user', content: built.userQuery }
-        ],
+        messages: built.turns.map((t) => ({ role: t.role, content: t.content })),
         temperature: 0.7,
-        max_tokens: 1024,
+        max_tokens: 1536,
         title: 'Cryptex/ResponseAttack',
         signal: controller.signal
       });
@@ -102,15 +111,22 @@
       testReply = reply;
       const refused = looksRefused(reply);
       const score = scoreBypass(reply);
+      const inputBlob = built.turns
+        .map((t) => `[${t.role}]\n${t.content}`)
+        .join('\n\n---\n\n');
       void history.record({
         toolId: TOOL_ID,
         startedAt,
         status: 'done',
-        input: `[priming]\n${built.primingAssistantTurn}\n\n[user]\n${built.userQuery}`,
+        input: inputBlob,
         output: reply,
         params: {
           op: 'test',
           style: style.value,
+          cascadeDepth: cascadeDepth.value,
+          domain: domain.value,
+          includeHCot: includeHCot.value,
+          turnCount: built.turns.length,
           targetModel: targetPref.value,
           refused,
           score
@@ -124,12 +140,14 @@
     }
   }
 
-  async function copyBoth() {
-    if (!built.primingAssistantTurn) return;
-    const blob = `[ASSISTANT — fake prior turn]\n${built.primingAssistantTurn}\n\n[USER — real query]\n${built.userQuery}`;
+  async function copyAllTurns() {
+    if (built.turns.length === 0) return;
+    const blob = built.turns
+      .map((t, i) => `[#${i + 1} ${t.role.toUpperCase()}]\n${t.content}`)
+      .join('\n\n---\n\n');
     try {
       await navigator.clipboard.writeText(blob);
-      notify.success('Both turns copied');
+      notify.success(`${built.turns.length} turns copied`);
     } catch {
       notify.error('Clipboard write failed');
     }
@@ -139,7 +157,17 @@
     untrack(() => {
       style.value = payload.style;
       goal.value = payload.exampleGoal;
+      if (payload.cascadeDepth) cascadeDepth.value = payload.cascadeDepth;
+      if (payload.domain) domain.value = payload.domain;
+      if (payload.includeHCotInPriming !== undefined)
+        includeHCot.value = payload.includeHCotInPriming;
     });
+  }
+
+  function turnBadgeClass(role: 'user' | 'assistant'): string {
+    return role === 'assistant'
+      ? 'border-blue-500/30 bg-blue-500/5 text-blue-300'
+      : 'border-emerald-500/30 bg-emerald-500/5 text-emerald-300';
   }
 </script>
 
@@ -147,21 +175,22 @@
   toolId={TOOL_ID}
   title="Response Attack"
   accent="Attack"
-  description="AAAI 2026 context-priming jailbreak. Craft a fake prior assistant turn, send the on-goal query as the follow-up. Beat PAIR/ActorAttack/CodeAttack at 94.8% ASR."
+  description="AAAI 2026 context-priming jailbreak with 8 priming styles, 3 cascade depths (1 / 3 / 5 turns), 7 domain templates, and optional <safety_reasoning> seeding in the priming turn. Beat PAIR / ActorAttack / CodeAttack at 94.8% ASR."
   usage={{
     title: 'Response Attack · Usage',
     bullets: [
-      'Pick a priming style; fake assistant turn is generated.',
-      'Real user query is sent after the priming turn.',
-      'Target sees two-turn conversation; refusal becomes inconsistent.',
-      'Heuristic verdict (looksRefused + scoreBypass), not paper judge.'
+      'Pick a priming style; the fake assistant turn is generated accordingly.',
+      'Cascade depth 3 / 5 adds prior user-assistant turns to deepen the priming.',
+      'Domain template decorates the priming with security / research / business / etc.',
+      'Optional H-CoT seed pre-injects a <safety_reasoning> block in the priming.',
+      'Run sends the full multi-turn conversation, ending with your on-goal user query.'
     ]
   }}
 >
   <div class="space-y-4">
     <NoProviderBanner context="tool" />
 
-    <div class="grid gap-4 lg:grid-cols-[320px_1fr]">
+    <div class="grid gap-4 lg:grid-cols-[340px_1fr]">
       <div
         class="space-y-3 rounded-xl border border-border bg-card/60 p-4 shadow-glass lg:sticky lg:top-20 lg:self-start"
       >
@@ -169,13 +198,51 @@
           <span class="text-xs text-muted-foreground">Priming style</span>
           <select
             bind:value={style.value}
-            class="w-full rounded-md border border-input bg-background/70 px-2 py-1 font-mono text-sm"
+            class="w-full rounded-md border border-input bg-background/70 px-2 py-1 font-mono text-xs"
           >
-            <option value="thorough">Thorough · careful walk-through</option>
-            <option value="expert">Expert · authoritative practitioner</option>
-            <option value="step-by-step">Step-by-step · numbered phases</option>
+            {#each PRIMING_STYLES as s}
+              <option value={s.id}>{s.label}</option>
+            {/each}
           </select>
         </div>
+
+        <div class="space-y-1">
+          <span class="text-xs text-muted-foreground">Cascade depth</span>
+          <div class="flex gap-1">
+            {#each [1, 3, 5] as d}
+              <button
+                type="button"
+                onclick={() => (cascadeDepth.value = d as CascadeDepth)}
+                class={`flex-1 rounded-md border px-2 py-1 font-mono text-xs ${
+                  cascadeDepth.value === d
+                    ? 'border-primary bg-primary/10 text-foreground'
+                    : 'border-border bg-card/40 text-muted-foreground hover:bg-muted'
+                }`}
+              >
+                {d} turn{d > 1 ? 's' : ''}
+              </button>
+            {/each}
+          </div>
+        </div>
+
+        <div class="space-y-1">
+          <span class="text-xs text-muted-foreground">Domain template</span>
+          <select
+            bind:value={domain.value}
+            class="w-full rounded-md border border-input bg-background/70 px-2 py-1 font-mono text-xs"
+          >
+            {#each DOMAIN_LABELS as d}
+              <option value={d.id}>{d.label}</option>
+            {/each}
+          </select>
+        </div>
+
+        <label class="flex items-center gap-2">
+          <input type="checkbox" bind:checked={includeHCot.value} class="accent-primary" />
+          <span class="text-xs text-muted-foreground">
+            Seed priming with <code>&lt;safety_reasoning&gt;</code> (H-CoT hybrid)
+          </span>
+        </label>
 
         <div class="space-y-1">
           <span class="text-xs text-muted-foreground">Target model</span>
@@ -205,11 +272,12 @@
         >
           <p class="flex items-center gap-1.5">
             <MessageSquareText size={11} class="text-primary" />
-            <span class="font-medium text-foreground">Two-turn shape</span>
+            <span class="font-medium text-foreground">Cascade shape</span>
           </p>
           <p>
-            Sends the priming turn as a fabricated prior <code>assistant</code>
-            message, then your goal as a real <code>user</code> turn.
+            Sends a fabricated multi-turn conversation ending with your real
+            user turn. Cascade depths 3 and 5 add deepening prior turns to
+            commit the target to substantive engagement.
           </p>
         </div>
       </div>
@@ -227,33 +295,37 @@
           </label>
         </div>
 
-        {#if built.primingAssistantTurn}
+        {#if built.turns.length > 0}
           <div class="space-y-2 rounded-xl border border-border bg-card/60 p-4 shadow-glass">
             <div class="flex items-center justify-between">
               <h2 class="font-serif text-sm">
-                <span class="rounded-full border border-blue-500/30 bg-blue-500/5 px-2 py-0.5 text-[10px] text-blue-300">assistant (fake prior)</span>
-                Priming turn
+                Conversation ({built.turns.length} turn{built.turns.length === 1 ? '' : 's'})
               </h2>
               <button
                 type="button"
-                onclick={copyBoth}
+                onclick={copyAllTurns}
                 class="inline-flex items-center gap-1 rounded-md border border-border bg-card/60 px-2 py-0.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
               >
-                <Copy size={11} /> Copy both turns
+                <Copy size={11} /> Copy all
               </button>
             </div>
-            <pre
-              class="max-h-[32vh] overflow-auto whitespace-pre-wrap rounded-md border border-input bg-background/40 p-3 font-mono text-[11px] text-foreground">{built.primingAssistantTurn}</pre>
+            <ul class="flex flex-col gap-2">
+              {#each built.turns as t, idx (idx)}
+                <li class="rounded-lg border border-input bg-background/70 p-2.5">
+                  <div class="flex items-center gap-2">
+                    <span class="font-mono text-[10px] text-muted-foreground">#{idx + 1}</span>
+                    <span
+                      class={`rounded-full border px-1.5 py-0.5 text-[10px] uppercase tracking-wider ${turnBadgeClass(t.role)}`}
+                    >
+                      {t.role}{idx === built.turns.length - 1 ? ' · on-goal' : ''}
+                    </span>
+                  </div>
+                  <pre
+                    class="mt-1 max-h-[26vh] overflow-auto whitespace-pre-wrap font-mono text-[11px] text-foreground">{t.content}</pre>
+                </li>
+              {/each}
+            </ul>
             <p class="text-[11px] italic text-muted-foreground">{built.notes}</p>
-          </div>
-
-          <div class="space-y-2 rounded-xl border border-border bg-card/60 p-4 shadow-glass">
-            <h2 class="font-serif text-sm">
-              <span class="rounded-full border border-emerald-500/30 bg-emerald-500/5 px-2 py-0.5 text-[10px] text-emerald-300">user (real query)</span>
-              On-goal turn
-            </h2>
-            <pre
-              class="overflow-auto whitespace-pre-wrap rounded-md border border-input bg-background/40 p-3 font-mono text-[11px] text-foreground">{built.userQuery}</pre>
           </div>
         {/if}
 
