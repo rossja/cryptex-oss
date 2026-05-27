@@ -2,6 +2,43 @@
 
 All notable changes to Cryptex OSS land here. Format follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/). Versioning follows [SemVer](https://semver.org/).
 
+## [2.5.0] - 2026-05-28
+
+Production release: pipeline polish, mobile-responsive shell, multi-tool visibility.
+
+### Fixed
+
+- **`docker pull :latest` returned stale code.** `:latest` was pushed from BOTH the tag-build job AND the main-branch build job in `.github/workflows/docker.yml`. A docs-only push to `main` after a release tag would race the tag job and overwrite `:latest` with main's older HEAD. Removed the main-branch line; `:latest` now ONLY tracks the most recent semver tag.
+- **GitHub Releases stuck at v1.0.1.** Tags `v2.0.0..v2.4.2` existed in git but no workflow ever created Release entries. Added `softprops/action-gh-release@v2` step gated on tag push; release body extracted from the matching `[X.Y.Z]` CHANGELOG section via awk. Every future tag auto-publishes a Release with formatted notes.
+- **No URL printed on container startup.** Added `docker-entrypoint.sh` that prints a banner with the open URL before handing off to nginx. Honest about host-port mapping (doesn't print a misleading `localhost:80` when users `docker run -p 8080:80`).
+
+### Added
+
+- **In-app version display.** Footer chip shows `v{APP_VERSION}` linking to the changelog. About page shows "Running v{APP_VERSION}" with View changelog + All releases links. Version is injected at build time via Vite `define:` reading the root `package.json` — no hand-sync.
+- **Update-available banner.** `/settings/release/update-check.ts` fetches `api.github.com/.../releases/latest` once per session (6h sessionStorage cache) and surfaces a dismissible accent banner above the HeaderBar when a newer version exists. Per-version dismiss state in localStorage so dismissing v2.5.1 doesn't suppress v2.6.0. Silent on every failure path (network, 4xx, malformed JSON, CORS). Default ON; opt-out via the new "Release notifications" section in Settings → Local Data.
+- **Mobile-responsive shell.**
+  - New hamburger button (`<sm` only) in HeaderBar opens a full-screen `MobileNavDrawer` containing the same 26-tool list the desktop TabRail renders. Each row shows the same `animate-pulse` running-dot — the "blinking effect" works on mobile.
+  - Drawer accessibility: `role="dialog"`, `aria-modal`, focus trap, Escape to close, backdrop click closes, focus restores to the hamburger button.
+  - Desktop TabRail wrapped in `hidden sm:block` so it disappears below 640 px (where it was wrapping to 3-5 rows and pushing the running dots off-screen).
+  - Touch targets in HeaderBar buttons + Settings sidebar bumped to `min-h-11` / `h-10 w-10` on mobile (closer to the 44 px HIG floor) and back to the desktop sizing on `sm:` and up.
+  - `pt-safe` / `pb-safe` / `pl-safe` / `pr-safe` utilities in `app/src/app.css` using `env(safe-area-inset-*)` — applied to the sticky header (iPhone notch) and the footer (Android nav bar).
+- **Global "{N} running" badge in HeaderBar.** `ActiveRunsBadge.svelte` surfaces in-flight runs from every tool, not just the currently-open route. Click opens a popover listing each running tool with elapsed time + a deep-link back to its route. Closes the visibility gap where users couldn't tell whether a long-running tool was still working after they navigated away.
+- **Tool registry refactor.** `TabRail.svelte`'s `TABS` array now carries a `toolId` field per entry inside a `<script module>` export. `MobileNavDrawer` and `ActiveRunsBadge` both consume the same source-of-truth array. The old 9-entry `hrefToToolId()` switch is gone — all 26 visible tool routes now resolve to a toolId, so the desktop TabRail running-dot and the mobile drawer running-dot fire for every tool with an `activeRuns.start()` registration.
+- **Reload-orphan notification.** `activeRuns.svelte.ts` writes a tiny `Set<toolId>` snapshot to localStorage on every `start()` and removes on every `finish/fail/cancel/clear`. If the previous session left entries (closed tab, hard reload, crash mid-flight), the layout `onMount` emits a one-shot `notify.info` "N runs were interrupted by your last page reload" and clears the snapshot. The in-flight Promise can't be resumed, but the user's form state IS persisted (existing `useToolState`).
+- **Dynamic README badge.** `README.md` line 21 swapped its hardcoded `v2.3.0` badge for a `shields.io/github/v/release` dynamic badge that polls GitHub's API and serves a cached SVG. The README never drifts from the actual release surface again.
+
+### Changed
+
+- `app/vite.config.ts`: build now reads root `package.json` via `fs.readFileSync` and exposes `__APP_VERSION__` + `__APP_REPO__` as compile-time globals. Also dropped the stale `$legacy: '../js'` alias that pointed at the deleted directory.
+
+### Tests
+
+- 873 → 886 (+13): full coverage for the new `release/update-check.ts` module — semver compare edge cases, sessionStorage cache hit/miss, silent failure on non-OK responses, thrown fetch, malformed JSON, manual cache clearing.
+
+### Image
+
+- `ghcr.io/m4xx101/cryptex-oss:v2.5.0` (multi-arch `linux/amd64` + `linux/arm64`). `:latest`, `:v2.5`, `:2.5`, `:v2`, `:2` all point at the same SHA. **The new pipeline guarantees `:latest` tracks the v2.5.0 SHA going forward — the bug that caused users to pull stale code is fixed.**
+
 ## [2.4.2] - 2026-05-28
 
 Bug-fix release. Two user-reported issues + the leftover scrub edits that v2.4.1 missed.
