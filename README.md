@@ -13,7 +13,7 @@
 </p>
 <p align="center">
   <strong>Open-source LLM red-team lab.</strong><br>
-  159 transforms, 26 tool surfaces, one Campaign front door, BYOK gateway. Runs in your browser.
+  159 transforms, 27 tool surfaces, one Campaign front door, BYOK gateway. Runs in your browser.
 </p>
 
 <p align="center">
@@ -130,7 +130,7 @@ Need a subpath? Build with `BASE_PATH=/cryptex` to serve at `/cryptex/...` inste
 
 ## Use it on your phone
 
-The app is responsive. Just visit the URL on mobile and add to home screen for one-tap launch. The full feature set works on iOS Safari and Chrome Android, including the BYOK gateway and all 26 tool surfaces.
+The app is responsive. Just visit the URL on mobile and add to home screen for one-tap launch. The full feature set works on iOS Safari and Chrome Android, including the BYOK gateway and all 27 tool surfaces.
 
 For private personal hosting reachable from your phone anywhere: run the Docker image on a Raspberry Pi or any home box, then expose it through Tailscale Funnel or Cloudflare Tunnel. Your phone reaches your self-hosted instance over HTTPS with zero port-forwarding and no public DNS exposure.
 

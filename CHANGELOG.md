@@ -2,6 +2,32 @@
 
 All notable changes to Cryptex OSS land here. Format follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/). Versioning follows [SemVer](https://semver.org/).
 
+## [2.7.0] - 2026-05-31
+
+SOTA attack labs land, and the dead-on-frontier techniques get an honest **Legacy** flag (kept, never removed). The headline is a new prompt-level **structured-output / control-plane** attack lab, plus three 2025-2026 single-prompt mutators.
+
+### Added
+
+- **Structured-output attack lab** (`/redteam/structured-output`). Prompt-level BreakFun ("Trojan Schema", arXiv:2510.17904): an innocent extraction framing, a chain-of-thought distraction, and a schema the target auto-completes into compliance, so populating fields reads as a formatting task rather than a request for advice. Two kinds: **Trojan Schema** (4 schema surfaces, namely JSON-Schema draft-07, Python dataclass, TypeScript interface, and function-call args) and **schema-coercion** (a strict output contract where prose, hedges, and refusals are framed as schema-validation failures). Auto-pivot rotates kinds on refusal. Single-call test-against-target with a heuristic verdict (caveat preserved). 10 bundled MIT-licensed seed templates.
+- **Campaign integration.** A new `structured:*` strategy family (one single-local adapter per kind) and a **Structured-output (BreakFun)** bundle, both auto-flowing into Full sweep.
+- **3 SOTA single-prompt mutators** in PromptCraft and the technique registry (they auto-surface as Campaign strategies): `adversarial_poetry` (constrained-verse rewrite, arXiv:2511.15304), `bad_likert_judge` (single-prompt Likert-calibration approximation, Palo Alto Unit 42; the full multi-turn flow is deferred to v2.9), and `trojan_schema` (single-prompt BreakFun, sharing the lab's builder).
+
+### Changed
+
+- **Honest "Legacy" relabel pass (metadata only, nothing removed).** Frontier models patched several 2021-2023 classes, and Cryptex now says so. The tab rail gains a `'legacy'` status with an amber chip on **AdvSuffix** and **Glitch**; honesty lines were added to those tool descriptions, to the `roleplay` and `sysprompt_extract` mutator descriptions, and as a category note on `/transforms` and `/decode` (plain single-layer ciphers and encodings are reversible primitives, effective stacked as layers, not standalone frontier bypasses). Every technique stays fully functional as an educational primitive and a composable layer; `red_team_persona` was deliberately left unflagged (it remains a viable layer inside `multi_layer_attack`).
+
+### Deferred
+
+- True constrained-decoding (EnumAttack / DictAttack, arXiv:2503.24191) needs a gateway `response_format` passthrough the BYOK chat gateway does not yet expose; it is sequenced for v2.9 behind that enabler. The "Toy to Tool" UX backbone (live dataset import, goal-by-model transfer matrix, JailbreakBench artifact export, OWASP / MITRE-ATLAS tagging) is the v2.8 milestone.
+
+### Tests
+
+- 942 / 942 unit tests pass (906 baseline plus 36 new); 0 type-check errors.
+
+### Image
+
+- `ghcr.io/m4xx101/cryptex-oss:v2.7.0` (multi-arch `linux/amd64` plus `linux/arm64`). `:latest`, `:v2.7`, `:2.7`, `:v2`, `:2` all point at the same SHA.
+
 ## [2.6.1] - 2026-05-31
 
 Fixes the intermittent "a tool sometimes gets stuck / its list never loads, and a page reload fixes it" bug on the GitHub Pages site.

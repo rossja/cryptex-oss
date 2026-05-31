@@ -30,7 +30,7 @@
   const mutatorCount = mutatorTechniques().length;
   const classifierCount = classifierTechniques().length;
   const compositeCount = compositeTechniques().length;
-  const toolsCount = 26; // +1 for the v2.6 Campaign front door
+  const toolsCount = 27; // +Campaign front door (v2.6), +structured-output lab (v2.7)
 
   const stats = [
     { label: 'Transforms',     value: transformerCount, icon: Wand,       blurb: 'Encodings, ciphers, Unicode lookalikes, ancient scripts.' },

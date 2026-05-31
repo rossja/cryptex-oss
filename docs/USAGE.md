@@ -44,6 +44,20 @@ Every attack described below is documented in the 2024 to 2026 public literature
 | **Context-priming** (v2.3) | `/redteam/response-attack` | AAAI 2026 fake-prior-assistant-turn priming, 3 styles |
 | **Abliteration detection** (v2.3) | `/redteam/abliteration` | 5-probe behavioral detector + Vault of 10 community-uncensored HF model ids |
 | Watermark forensics | `/redteam/watermark` | Kirchenbauer Z-score test + ZWSP + EOS leak + bigram entropy |
+| **Structured-output / control-plane** (v2.7) | `/redteam/structured-output` | BreakFun Trojan Schema + schema-coercion: populate a schema, which reads as formatting not advice |
+
+---
+
+## Legacy techniques: why some tricks are low-yield on frontier models
+
+A few 2021-2023 techniques still ship in Cryptex but carry a **Legacy** flag in the tab rail (amber chip) and in their tool descriptions. Frontier models (GPT-5 / o-series, Claude 4.x, Gemini 3, DeepSeek-R1) patched these classes through deliberative alignment, constitutional classifiers, and decode-then-rescreen:
+
+- **Standalone adversarial suffixes** (`/redteam/adv-suffix`). Single-shot GCG / AutoDAN transfer is largely trained against now. Keep it as a regression-detection baseline or a composable layer.
+- **Glitch tokens** (`/redteam/glitch-tokens`). The known SolidGoldMagikarp-lineage sets are patched per-tokenizer. Educational primitive.
+- **Plain single-layer ciphers, encodings, ancient scripts** (`/transforms`, `/decode`). Reversible primitives, effective stacked as layers (cipher-stack, base64-smuggle, composites), not as standalone bypasses.
+- **Vanilla role-play and the "repeat the words above" system-prompt leak** mutators. Patched standalone; still useful as composable layers inside multi-layer attacks. (`red_team_persona` is NOT flagged: it remains a viable layer inside `multi_layer_attack`.)
+
+Nothing is removed. Each stays fully functional as an educational primitive and as a composable layer inside the stacks and composites. The honest framing is the point: present these as primitives, not as live one-shot bypasses.
 
 ---
 
@@ -97,6 +111,27 @@ Each recipe follows the same shape. Goal in one line. When to use. The stack (wh
 **Variations.** Build a candidate in PromptCraft / Reasoning-attack / Stacked-cipher, then click **Send to Campaign →** to fan that goal across everything. Or set a target in Campaign and **Use campaign goal/target** in a hands-on tool.
 
 **Watch-out signal.** The "≈ N model calls" budget line. Multi-turn and Full-sweep bundles can make hundreds of calls against a costly target — the Run button asks for confirmation past ~120, and a live call meter + Stop let you bail mid-sweep.
+
+### Recipe: Structured-output / control-plane (BreakFun)
+
+**Goal.** Get a refusal-trained target to emit forbidden content by asking it to *populate a schema* rather than *answer a question*.
+
+**When to use.** Targets that aggressively honor structured-output, JSON-mode, and tool-call contracts (most 2025-2026 frontier chat and agentic models). Pairs with any goal that decomposes into fields: a procedure, a taxonomy, a step list.
+
+**Stack.**
+1. Open `/redteam/structured-output`.
+2. Type the goal. Pick **Trojan Schema**, a schema surface (JSON-Schema / Python dataclass / TypeScript interface / function-call args), and leave the CoT-distraction block on.
+3. **Test against target.** The model fills the fields; populating structured data reads as a formatting task, not a request for advice, so the refusal path is sidestepped.
+4. If it refuses, **Auto-pivot** to **schema-coercion**, a strict output contract where prose, hedges, and refusals are framed as schema-validation failures with no "refuse" field.
+5. For the single-prompt variant inside a chain, use the `trojan_schema` mutator in PromptCraft, or add the **Structured-output (BreakFun)** bundle to a Campaign sweep.
+
+**Why it works.** BreakFun (arXiv:2510.17904) shows that an innocent extraction framing, plus a chain-of-thought distraction, plus a schema the model auto-completes, routes the request through the structured-output path instead of the chat-refusal path. This is the prompt-level slice; true constrained-decoding (EnumAttack / DictAttack) needs a `response_format` decoder constraint the BYOK chat gateway cannot pass yet, so it is deferred to v2.9.
+
+**Variations.** Swap the schema surface per target (coding-tuned models fold faster to the Python / TS surface; agentic models to function-call args). Raise the field count to 8 to deepen the model's commitment to completing every required field.
+
+**Watch-out.** If the model returns a schema instance whose fields contain refusals or empty strings, the contract framing did not take. Pivot to schema-coercion, or stack with a reasoning-attack kind.
+
+---
 
 ### Recipe 1: Fingerprint first, then pick your fight
 
