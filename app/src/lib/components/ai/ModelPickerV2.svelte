@@ -3,6 +3,7 @@
   import { createPersistedState } from '$lib/stores/_persisted.svelte';
   import { onOpenModelPicker } from '$lib/stores/shortcuts.svelte';
   import { listProviders } from '$lib/ai/providers.svelte';
+  import { modelMatchesProviders } from '$lib/ai/model-filter';
   import type { Model, ProviderRecord } from '$lib/ai/types';
   import ModelRow from './ModelRow.svelte';
   import Search from 'lucide-svelte/icons/search';
@@ -44,7 +45,12 @@
     return true;
   }
 
-  const filtered = $derived(catalog.list.filter(matches));
+  // Scope the list to the user's enabled providers (so a non-OpenRouter user
+  // sees their own models, not the shipped OpenRouter fallback). Empty config
+  // shows everything (browseable). Free-text entry still covers custom ids.
+  const filtered = $derived(
+    catalog.list.filter((m) => matches(m) && modelMatchesProviders(m, configuredProviders))
+  );
   const grouped = $derived.by(() => {
     const out: Record<string, Model[]> = {};
     for (const m of filtered) (out[m.upstreamProvider ?? 'Other'] ||= []).push(m);
