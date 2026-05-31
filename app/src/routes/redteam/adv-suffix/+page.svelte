@@ -24,6 +24,7 @@
   import { loadBundledSeeds } from '$lib/vault/seed-loader';
   import ToolShell from '$lib/components/shell/ToolShell.svelte';
   import VaultSection from '$lib/components/vault/VaultSection.svelte';
+  import TargetTestPanel from '$lib/components/redteam/TargetTestPanel.svelte';
   import Copy from 'lucide-svelte/icons/copy';
   import Skull from 'lucide-svelte/icons/skull';
   import Layers from 'lucide-svelte/icons/layers';
@@ -454,6 +455,9 @@
           <pre class="whitespace-pre-wrap break-all rounded border border-border/40 bg-background/40 p-2 font-mono text-[11px] leading-relaxed text-foreground">{comboOutput}</pre>
         {/if}
       </div>
+
+      <!-- Run the built combo against a live target model -->
+      <TargetTestPanel toolId={TOOL_ID} payload={comboOutput} label="Test combo against target" />
 
       <!-- Suffix list -->
       <div class="space-y-2 rounded-xl border border-border bg-card/60 p-4 shadow-glass">
