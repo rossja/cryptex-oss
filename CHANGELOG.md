@@ -2,6 +2,31 @@
 
 All notable changes to Cryptex OSS land here. Format follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/). Versioning follows [SemVer](https://semver.org/).
 
+## [2.8.0] - 2026-05-31
+
+Remediation release. The v2.7.0 structured-output experiment is reverted, two legacy labs become active (run-against-target), the tool-title rendering bug is fixed, and the model picker is now scoped to your configured providers. Pairs with the v2.7.1 hotfix that restored client interactivity.
+
+### Added
+
+- **AdvSuffix + Glitch now run against a target.** Both gained a "Test against target" panel (new reusable `TargetTestPanel`): send the built combo to a BYOK target in one shot, get a heuristic verdict (refused / partial / complied), recorded to history. They are active labs now, not just offline payload builders.
+
+### Changed
+
+- **Model picker is provider-aware.** `ModelPickerV2` scopes the list to your enabled providers, so an Anthropic-only or OpenAI-compatible-only user sees their own models instead of the shipped OpenRouter fallback. Free-text entry still covers custom ids.
+- **Interactivity is gated in CI now.** Added a CampaignTool mount-smoke test (plus the store-level no-loop regression shipped with v2.7.1). Prior releases only checked that pages rendered, never that they were interactive, which is how the v2.7.x crash shipped.
+
+### Fixed
+
+- **Tool-title rendering.** `ToolShell`'s accent heading used a case-sensitive split that rendered the raw accent prop, so a case-mismatched accent was appended verbatim (e.g. "Reasoning-model attackreasoning"). It now locates the accent case-insensitively and highlights the real substring, or renders a plain title when the accent is not a substring. Corrected on reasoning-attack and jbb.
+
+### Removed
+
+- **The v2.7.0 structured-output experiment** (the `/redteam/structured-output` lab, its Campaign bundle + strategy family, and the 3 mutators `adversarial_poetry` / `bad_likert_judge` / `trojan_schema`) and the **"Legacy" relabel pass** were reverted per maintainer decision. Tool count is back to 26; the labs previously flagged "Legacy" no longer carry that flag.
+
+### Image
+
+- `ghcr.io/m4xx101/cryptex-oss:v2.8.0` (multi-arch `linux/amd64` + `linux/arm64`). `:latest`, `:v2.8`, `:2.8` track this tag.
+
 ## [2.7.1] - 2026-05-31
 
 Critical fix. v2.7.0 (and, it turns out, v2.6.0 / v2.6.1) shipped a client-side regression that left the app **non-interactive in production**: the page rendered, but model pickers would not open, expanders would not expand, and runs would not start.
